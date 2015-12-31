@@ -1,0 +1,8 @@
+<script src="parser.js"></script>
+
+<script>
+	var p = new Parser("   Это тестовый {{   TEMPLATE}} и {{if oneHelper}} по условию {{elseif anotherHelper}} по другому условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}");
+	var struct = p.parse();
+
+	console.dir(struct);
+</script>
