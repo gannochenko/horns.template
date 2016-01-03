@@ -1,5 +1,5 @@
 /*
-  Это тестовый {{   TEMPL.ATE}} и {{if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{if hz hzVal}}другому{{endif}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}
+  Это тестовый {{   TEMPL.ATE}} и {{if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{if hz}}другому{{endif}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}
 */
 
 Parser = function (str)
@@ -74,8 +74,7 @@ Parser = function (str)
 				return this.substr(i, 'if ');
 			},
 			do: 	function(){
-				//this.struct.forward(new Parser.node.iff());
-				//console.dir('if');
+				//this.struct.get().cast('ifelse');
 			},
 			syn: 	['sym','','','','','','','','',],
 		},
@@ -130,7 +129,7 @@ Parser = function (str)
 					offs += spl[k].length+1;
 				}
 
-				this.struct.addSymbol(spl);
+				this.struct.symbol(spl);
 			},
 			syn: 	['ic','icu','','','','','','','',],
 		},// introduce allowed characters here
@@ -348,13 +347,15 @@ Parser.prototype.findSeq = function(i, expr)
 }
 Parser.prototype.checkExpected = function(atom, afterAtom)
 {
-	if(afterAtom == null)// || afterAtom == 'sp')
+	if(afterAtom == null)
 	{
 		return true;
 	}
 
 	return typeof this.atom[afterAtom].synR[atom] != 'undefined';
 }
+
+// struct
 
 Parser.Struct = function(){
 	this.current = new Parser.node.instruction();
@@ -371,9 +372,40 @@ Parser.Struct.prototype.append = function(node){
 Parser.Struct.prototype.backward = function(){
 	this.current = this.current.parent;
 }
-Parser.Struct.prototype.addSymbol = function(sym){
+Parser.Struct.prototype.symbol = function(sym){
 	this.current.get().symbol(sym);
 }
+Parser.Struct.prototype.get = function(){
+	return this.current.get();
+}
+
+// function call
+
+Parser.func = function(arg, name){
+	this.name = typeof name == 'undefined' ? 'dumb' : name;
+	this.args = [];
+
+	if(typeof arg != 'undefined')
+	{
+		this.args.push(arg);
+	}
+}
+Parser.func.prototype.addArg = function(symbol){
+	if(this.name == 'dumb' && this.args.length == 1)
+	{
+		if(this.args.length > 1)
+		{
+			throw new Exception(this.args.join('.')+' is not a valid function name');
+		}
+
+		this.name = this.args[0][0];
+		this.args = [];
+	}
+
+	this.args.push(symbol);
+}
+
+// type of node
 
 var node = {};
 Parser.node = node;
@@ -406,7 +438,14 @@ node.instruction.prototype.append = function(node){
 	this.ch.push(node);
 }
 node.instruction.prototype.symbol = function(symbol){
-	this.sym = symbol;
+	if(this.sym == null)
+	{
+		this.sym = new Parser.func(symbol);
+	}
+	else
+	{
+		this.sym.addArg(symbol);
+	}
 }
 node.instruction.prototype.get = function(i){
 	if(typeof i == 'undefined')
@@ -415,24 +454,27 @@ node.instruction.prototype.get = function(i){
 	}
 	return this.ch[i];
 }
+node.instruction.prototype.is = function(type){
+	return this instanceof node[type];
+}
 
 // if node
-node.iff = function(val){
+node.instruction.ifelse = function(val){
 	this.branch = {
 	};
 	// 1 - if
 	this.stat = '';
 }
-node.iff.prototype.eval = function(){
+node.instruction.ifelse.prototype.eval = function(){
 }
-node.iff.prototype.append = function(node){
+node.instruction.ifelse.prototype.append = function(node){
 	console.dir('if append');
 	console.dir(node);
 }
-node.iff.prototype.symbol = function(symbol){
+node.instruction.ifelse.prototype.symbol = function(symbol){
 
 	console.dir('symb');
 	console.dir(symbol);
 }
-node.iff.prototype.get = function(i){
+node.instruction.ifelse.prototype.get = function(i){
 }
