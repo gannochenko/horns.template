@@ -1,11 +1,11 @@
 /*
-   Это тестовый {{   TEMPLATE}} и {{if oneHelper}} по условию {{elseif anotherHelper}} по другому условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}
+  Это тестовый {{   TEMPL.ATE}} и {{if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{if hz hzVal}}другому{{endif}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}
 */
 
 Parser = function (str)
 {
 	this.str = str.toString();
-	this.struct = [];
+	this.struct = new Parser.Struct();
 
 	// each atom may be followed with space (sp), and space may be follewed with any instruction
 	// atoms like "io", "iou" change context to 'instruction' and atoms "ic" and "icu" change context back to "text"
@@ -26,7 +26,9 @@ Parser = function (str)
 				return this.substr(i, '{{{');
 			},
 			do: 	function(){
+				//console.dir('{{{');
 				this.saveTextChunk();
+				this.struct.append(new Parser.node.instruction(false));
 				this.isInst(true);
 			},
 			syn: 	['icu','sym','','','','','','','','',],
@@ -37,7 +39,9 @@ Parser = function (str)
 				return this.substr(i, '{{');
 			},
 			do: 	function(){
+				//console.dir('{{');
 				this.saveTextChunk();
+				this.struct.append(new Parser.node.instruction(true));
 				this.isInst(true);
 			},
 			syn: 	['if_','elseif','el','endif', 'ic', 'sym','','','','','','','',''], // order is important, sym must go at the end as the last chance character to be recognized
@@ -48,6 +52,7 @@ Parser = function (str)
 				return this.substr(i, '}}}');
 			},
 			do: 	function(){
+				//console.dir('}}}');
 				this.isTxt(true);
 			},
 			syn: 	['io','iou','','','','','','','',],
@@ -58,6 +63,7 @@ Parser = function (str)
 				return this.substr(i, '}}');
 			},
 			do: 	function(){
+				//console.dir('}}');
 				this.isTxt(true);
 			},
 			syn: 	['io','iou','','','','','','','',],
@@ -67,7 +73,10 @@ Parser = function (str)
 			find: 	function(i){
 				return this.substr(i, 'if ');
 			},
-			do: 	function(){},
+			do: 	function(){
+				//this.struct.forward(new Parser.node.iff());
+				//console.dir('if');
+			},
 			syn: 	['sym','','','','','','','','',],
 		},
 		// elseif
@@ -75,7 +84,9 @@ Parser = function (str)
 			find: 	function(i){
 				return this.substr(i, 'elseif ');
 			},
-			do: 	function(){},
+			do: 	function(){
+				//console.dir('elseif');
+			},
 			syn: 	['sym','','','','','','','','',],
 		},
 		// else
@@ -83,7 +94,9 @@ Parser = function (str)
 			find: 	function(i){
 				return this.substr(i, 'else');
 			},
-			do: 	function(){},
+			do: 	function(){
+				//console.dir('else');
+			},
 			syn: 	['ic','','','','','','','','',],
 		},
 		// endif
@@ -91,32 +104,10 @@ Parser = function (str)
 			find: 	function(i){
 				return this.substr(i, 'endif');
 			},
-			do: 	function(){},
+			do: 	function(){
+				//this.struct.backward();
+			},
 			syn: 	['ic','','','','','','','','',]
-		},
-		// helper argument list open (
-		hao: {
-			find: 	function(i){
-				return this.str[i] == '(';
-			},
-			do: 	function(){},
-			syn: 	[]
-		},
-		// helper argument list close )
-		hac: {
-			find: 	function(i){
-				return this.str[i] == ')';
-			},
-			do: 	function(){},
-			syn: 	[]
-		},
-		// helper argument list separator ,
-		has: {
-			find: 	function(i){
-				return this.str[i] == ',';
-			},
-			do: 	function(){},
-			syn: 	[]
 		},
 
 		// all other is SYMBOL, goes at the end
@@ -124,12 +115,26 @@ Parser = function (str)
 			find: 	function(i){
 				return this.findSeq(i, '[a-zA-Z0-9_\\.]');
 			},
-			do: 	function(){},
+			do: 	function(value, i){
+
+				var spl = value.split('.');
+
+				// parse symbol sequence
+				var offs = 0;
+				for(var k = 0; k < spl.length; k++)
+				{
+					if(spl[k].length == 0)
+					{
+						throw new Error('Unexpected dot at '+(i + offs));
+					}
+					offs += spl[k].length+1;
+				}
+
+				this.struct.addSymbol(spl);
+			},
 			syn: 	['ic','icu','','','','','','','',],
 		},// introduce allowed characters here
 	}
-
-	console.dir(this.atom);
 
 	var all = [];
 	for(var k in this.atom)
@@ -176,27 +181,9 @@ Parser.prototype.detectAtom = function(i)
 	var ctx = this.vars.ctx;
 	var at = this.vars.at;
 	var expect = null;
-
-	/*
-	if(this.isTxt())
-	{
-		expect = ['io','iou']; // find instruction open
-	}
-	else
-	{
-		if(at == 'sp')
-		{
-			expect = this.vars.all;
-		}
-		else
-		{
-			expect = this.atom[at].syn;
-		}
-	}
-	*/
-
 	var found = false;
 	var all = this.isTxt() ? ['iou','io'] : this.vars.all;
+
 	for(var k = 0; k < all.length; k++)
 	{
 		if(all[k].length == 0)
@@ -230,7 +217,7 @@ Parser.prototype.detectAtom = function(i)
 	}
 	else
 	{
-		console.dir('>>>>> at '+i+' found: '+all[k]+' with offset '+found.offs+' and value '+found.inst);
+		//console.dir('>>>>> at '+i+' found: '+all[k]+' with offset '+found.offs+' and value '+found.inst);
 		//console.dir(at);
 
 		// check if it was expected
@@ -252,7 +239,7 @@ Parser.prototype.parse = function()
 {
 	if(this.str.length)
 	{
-		console.dir(this.str);
+		//console.dir(this.str);
 
 		var i = 0;
 		var j = 0;
@@ -277,7 +264,7 @@ Parser.prototype.parse = function()
 			if(next.atom != false)
 			{
 				// do atom action
-				this.evalAtom(next.atom);
+				this.evalAtom(next, j);
 			}
 			else
 			{
@@ -310,18 +297,15 @@ Parser.prototype.isInst = function(sw)
 
 	return this.vars.ctxIns;
 }
-Parser.prototype.evalAtom = function(atom)
+Parser.prototype.evalAtom = function(found, j)
 {
-	return this.atom[atom].do.call(this);
+	return this.atom[found.atom].do.apply(this, [found.val, j, found.offs]);
 }
 Parser.prototype.saveTextChunk = function()
 {
 	if(this.vars.chunk != '')
 	{
-		this.struct.push({
-			type: 'txt',
-			val: this.vars.chunk
-		});
+		this.struct.append(new Parser.node.static(this.vars.chunk));
 		this.vars.chunk = '';
 	}
 }
@@ -370,4 +354,85 @@ Parser.prototype.checkExpected = function(atom, afterAtom)
 	}
 
 	return typeof this.atom[afterAtom].synR[atom] != 'undefined';
+}
+
+Parser.Struct = function(){
+	this.current = new Parser.node.instruction();
+	this.root = this.current;
+}
+Parser.Struct.prototype.forward = function(node){
+	this.append(node);
+	this.current = node;
+}
+Parser.Struct.prototype.append = function(node){
+	node.parent = this.current;
+	this.current.append(node);
+}
+Parser.Struct.prototype.backward = function(){
+	this.current = this.current.parent;
+}
+Parser.Struct.prototype.addSymbol = function(sym){
+	this.current.get().symbol(sym);
+}
+
+var node = {};
+Parser.node = node;
+
+// text node
+node.static = function(val){
+	this.value = val;
+}
+node.static.prototype.eval = function(){
+	return this.value;
+}
+node.static.prototype.append = function(){
+}
+node.static.prototype.symbol = function(){
+}
+node.static.prototype.get = function(i){
+}
+
+// instruction node
+node.instruction = function(escape){
+	//this.value = val;
+	this.escape = escape;
+	this.sym = null;
+	this.ch = [];
+}
+node.instruction.prototype.eval = function(obj){
+	//return this.value;
+}
+node.instruction.prototype.append = function(node){
+	this.ch.push(node);
+}
+node.instruction.prototype.symbol = function(symbol){
+	this.sym = symbol;
+}
+node.instruction.prototype.get = function(i){
+	if(typeof i == 'undefined')
+	{
+		i = this.ch.length - 1;
+	}
+	return this.ch[i];
+}
+
+// if node
+node.iff = function(val){
+	this.branch = {
+	};
+	// 1 - if
+	this.stat = '';
+}
+node.iff.prototype.eval = function(){
+}
+node.iff.prototype.append = function(node){
+	console.dir('if append');
+	console.dir(node);
+}
+node.iff.prototype.symbol = function(symbol){
+
+	console.dir('symb');
+	console.dir(symbol);
+}
+node.iff.prototype.get = function(i){
 }
