@@ -1,7 +1,3 @@
-/*
-  Это тестовый {{   TEMPL.ATE}} и {{if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{if hz}}другому{{endif}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}
-*/
-
 Parser = function (str)
 {
 	this.str = str.toString();
@@ -12,7 +8,6 @@ Parser = function (str)
 	// if "io" atom met, it must not be followed with "icu" or "iou" or another "io". The same rule for "iou"
 	// a sequence of sym, symd and sp represents "symbol sequence", which lately should be mapped to either one of known helpers or a part of data object
 	this.atom = {
-		// space
 		sp: {
 			find: 	function(i){
 				return this.findSeq(i, '\\s');
@@ -20,39 +15,32 @@ Parser = function (str)
 			do: 	function(){},
 			syn: 	['if_','elseif','el','endif', 'io', 'iou', 'ic','icu', 'sym','','','','','','','','']
 		},
-		// instruction open unsafe {{{
 		iou: {
 			find: 	function(i){
 				return this.substr(i, '{{{');
 			},
 			do: 	function(){
-				//console.dir('{{{');
 				this.saveTextChunk();
-				this.struct.append(new Parser.node.instruction(false));
-				this.isInst(true);
+				this.isInst(true, false);
 			},
 			syn: 	['icu','sym','','','','','','','','',],
 		},
-		// instruction open {{
 		io: {
 			find: 	function(i){
 				return this.substr(i, '{{');
 			},
 			do: 	function(){
-				//console.dir('{{');
 				this.saveTextChunk();
-				this.struct.append(new Parser.node.instruction(true));
-				this.isInst(true);
+				this.isInst(true, true);
 			},
 			syn: 	['if_','elseif','el','endif', 'ic', 'sym','','','','','','','',''], // order is important, sym must go at the end as the last chance character to be recognized
 		},
-		// instruction close unsafe }}}
 		icu: {
 			find: 	function(i){
 				return this.substr(i, '}}}');
 			},
 			do: 	function(){
-				//console.dir('}}}');
+				// todo: check there was an {{{ instruction, not {{
 				this.isTxt(true);
 			},
 			syn: 	['io','iou','','','','','','','',],
@@ -63,7 +51,7 @@ Parser = function (str)
 				return this.substr(i, '}}');
 			},
 			do: 	function(){
-				//console.dir('}}');
+				// todo: check there was an {{ instruction, not {{{
 				this.isTxt(true);
 			},
 			syn: 	['io','iou','','','','','','','',],
@@ -74,7 +62,7 @@ Parser = function (str)
 				return this.substr(i, 'if ');
 			},
 			do: 	function(){
-				//this.struct.get().cast('ifelse');
+				this.struct.forward(new Parser.node.instruction.ifelse());
 			},
 			syn: 	['sym','','','','','','','','',],
 		},
@@ -84,7 +72,11 @@ Parser = function (str)
 				return this.substr(i, 'elseif ');
 			},
 			do: 	function(){
-				//console.dir('elseif');
+				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('elseif'))
+				{
+					throw new Error('Unexpected elseif at '+i);
+				}
+				this.struct.atom('elseif');
 			},
 			syn: 	['sym','','','','','','','','',],
 		},
@@ -94,7 +86,11 @@ Parser = function (str)
 				return this.substr(i, 'else');
 			},
 			do: 	function(){
-				//console.dir('else');
+				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('else'))
+				{
+					throw new Error('Unexpected else at '+i);
+				}
+				this.struct.atom('else');
 			},
 			syn: 	['ic','','','','','','','','',],
 		},
@@ -104,7 +100,11 @@ Parser = function (str)
 				return this.substr(i, 'endif');
 			},
 			do: 	function(){
-				//this.struct.backward();
+				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('endif'))
+				{
+					throw new Error('Unexpected endif at '+i);
+				}
+				this.struct.backward();
 			},
 			syn: 	['ic','','','','','','','','',]
 		},
@@ -129,6 +129,10 @@ Parser = function (str)
 					offs += spl[k].length+1;
 				}
 
+				if(this.vars.instructionDetected != false)
+				{
+					this.struct.append(new Parser.node.instruction(this.vars.instructionDetected == 'E'));
+				}
 				this.struct.symbol(spl);
 			},
 			syn: 	['ic','icu','','','','','','','',],
@@ -156,13 +160,12 @@ Parser = function (str)
 		this.atom[k].synR = synRev;
 	}
 
-	//console.dir(this.atom);
-
 	this.vars = {
 		ctxIns: false,
 		at: null,
 		chunk: '',
-		all: all
+		all: all,
+		instructionDetected: false
 	}
 }
 Parser.prototype.walk = function(i, cb)
@@ -190,8 +193,7 @@ Parser.prototype.detectAtom = function(i)
 			continue;
 		}
 
-		//if(this.isInst())
-		//console.dir('check for '+all[k]);
+		//if(this.isInst()) console.dir('check for '+all[k]);
 
 		found = this.atom[all[k]].find.apply(this, [i]);
 		if(found !== false)
@@ -216,11 +218,10 @@ Parser.prototype.detectAtom = function(i)
 	}
 	else
 	{
-		//console.dir('>>>>> at '+i+' found: '+all[k]+' with offset '+found.offs+' and value '+found.inst);
-		//console.dir(at);
+		//console.dir('>>>>> at '+i+' found: '+all[k]+' with offset '+found.offs+' and value '+found.inst);console.dir(at);
 
 		// check if it was expected
-		if(!this.checkExpected(all[k], at))
+		if(!this.isExpectable(all[k], at))
 		{
 			throw new Error('Unexpected '+all[k]);
 		}
@@ -238,18 +239,13 @@ Parser.prototype.parse = function()
 {
 	if(this.str.length)
 	{
-		//console.dir(this.str);
-
 		var i = 0;
 		var j = 0;
 		var next = null;
 		while(true)
 		{
-			//console.dir(j);
-
 			if(j >= this.str.length - 1)
 			{
-				console.dir('end');
 				this.saveTextChunk();
 				return this.struct; // parse end
 			}
@@ -262,8 +258,13 @@ Parser.prototype.parse = function()
 			next = this.detectAtom(j);
 			if(next.atom != false)
 			{
+				var detectedBefore = this.vars.instructionDetected;
 				// do atom action
 				this.evalAtom(next, j);
+				if(detectedBefore != false && next.atom != 'sp')
+				{
+					this.vars.instructionDetected = false;
+				}
 			}
 			else
 			{
@@ -287,11 +288,12 @@ Parser.prototype.isTxt = function(sw)
 
 	return !this.vars.ctxIns;
 }
-Parser.prototype.isInst = function(sw)
+Parser.prototype.isInst = function(sw, escape)
 {
 	if(sw)
 	{
 		this.vars.ctxIns = true;
+		this.vars.instructionDetected = escape ? 'E' : 'N';
 	}
 
 	return this.vars.ctxIns;
@@ -345,7 +347,7 @@ Parser.prototype.findSeq = function(i, expr)
 		inst: inst
 	}
 }
-Parser.prototype.checkExpected = function(atom, afterAtom)
+Parser.prototype.isExpectable = function(atom, afterAtom)
 {
 	if(afterAtom == null)
 	{
@@ -359,7 +361,7 @@ Parser.prototype.checkExpected = function(atom, afterAtom)
 
 Parser.Struct = function(){
 	this.current = new Parser.node.instruction();
-	this.root = this.current;
+	this.tree = this.current;
 }
 Parser.Struct.prototype.forward = function(node){
 	this.append(node);
@@ -378,11 +380,24 @@ Parser.Struct.prototype.symbol = function(sym){
 Parser.Struct.prototype.get = function(){
 	return this.current.get();
 }
+Parser.Struct.prototype.isCurrent = function(type){
 
-// function call
+	if(type == 'instruction')
+	{
+		return this.current instanceof this.instruction;
+	}
+
+	return this.current instanceof node.instruction[type];
+}
+Parser.Struct.prototype.isExpectable = function(atom){
+	return this.current.isExpectable(atom);
+}
+Parser.Struct.prototype.atom = function(atom){
+	return this.current.atom(atom);
+}
 
 Parser.func = function(arg, name){
-	this.name = typeof name == 'undefined' ? 'dumb' : name;
+	this.name = typeof name == 'undefined' ? 'asis' : name;
 	this.args = [];
 
 	if(typeof arg != 'undefined')
@@ -391,11 +406,11 @@ Parser.func = function(arg, name){
 	}
 }
 Parser.func.prototype.addArg = function(symbol){
-	if(this.name == 'dumb' && this.args.length == 1)
+	if(this.name == 'asis' && this.args.length == 1)
 	{
-		if(this.args.length > 1)
+		if(this.args[0].length > 1)
 		{
-			throw new Exception(this.args.join('.')+' is not a valid function name');
+			throw new Error(this.args[0].join('.')+' is not a valid function name');
 		}
 
 		this.name = this.args[0][0];
@@ -405,7 +420,7 @@ Parser.func.prototype.addArg = function(symbol){
 	this.args.push(symbol);
 }
 
-// type of node
+// types of node
 
 var node = {};
 Parser.node = node;
@@ -423,11 +438,12 @@ node.static.prototype.symbol = function(){
 }
 node.static.prototype.get = function(i){
 }
+node.static.prototype.atom = function(i){
+}
 
 // instruction node
 node.instruction = function(escape){
-	//this.value = val;
-	this.escape = escape;
+	this.escape = !!escape;
 	this.sym = null;
 	this.ch = [];
 }
@@ -454,27 +470,70 @@ node.instruction.prototype.get = function(i){
 	}
 	return this.ch[i];
 }
-node.instruction.prototype.is = function(type){
-	return this instanceof node[type];
+node.static.prototype.atom = function(i){
 }
 
 // if node
 node.instruction.ifelse = function(val){
-	this.branch = {
-	};
-	// 1 - if
-	this.stat = '';
+	this.branches = [];
+	this.newBranch();
+	this.metElse = false;
 }
 node.instruction.ifelse.prototype.eval = function(){
 }
 node.instruction.ifelse.prototype.append = function(node){
-	console.dir('if append');
-	console.dir(node);
+	this.getBranch().ch.push(node);
 }
 node.instruction.ifelse.prototype.symbol = function(symbol){
 
-	console.dir('symb');
-	console.dir(symbol);
+	// todo: check that no symbol can go after 'else' atom
+
+	var lastBr = this.getBranch();
+
+	if(lastBr.cond == null)
+	{
+		lastBr.cond = new Parser.func(symbol);
+	}
+	else
+	{
+		lastBr.cond.addArg(symbol);
+	}
+}
+node.instruction.ifelse.prototype.newBranch = function(){
+	this.branches.push({
+		cond: null,
+		ch: []
+	});
+}
+node.instruction.ifelse.prototype.getBranch = function(){
+	return this.branches[this.branches.length - 1];
 }
 node.instruction.ifelse.prototype.get = function(i){
+	var br = this.getBranch();
+	if(br.ch.length == 0)
+	{
+		return this;
+	}
+	else
+	{
+		return br.ch[br.ch.length - 1];
+	}
+}
+node.instruction.ifelse.prototype.isExpectable = function(atom)
+{
+	if(atom == 'endif')
+	{
+		return true;
+	}
+	return !this.metElse;
+}
+node.instruction.ifelse.prototype.atom = function(atom){
+	if(atom == 'elseif' || atom == 'else')
+	{
+		this.newBranch();
+	}
+	if(atom == 'else')
+	{
+		this.metElse = true;
+	}
 }
