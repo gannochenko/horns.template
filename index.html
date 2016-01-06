@@ -9,19 +9,21 @@
 		return 'результат тестового хелпера';
 	});
 	p.registerHelper('oneHelper', function(obj){
-		return 'первый хелпер';
+		//console.dir(arguments);
+		return false;
 	});
 	p.registerHelper('hz', function(obj){
-		return 'hz хелпер';
+		return false;
 	});
-	p.registerHelper('anotherHelper', function(obj){
-		return 'другой хелпер';
+	p.registerHelper('anotherHelper', function(){
+		return true;
 	});
 
 	var obj = {
 		'TEMPL': {'ATE': 'полная жопа'},
 		'unescaped': 'unescaped',
+		'one': {'Helper': {'Value':'ohv'}}
 	};
 
-	p.get(obj);
+	console.dir(p.get(obj));
 </script>

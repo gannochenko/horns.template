@@ -378,32 +378,88 @@ Template.prototype.isExpectable = function(atom, afterAtom)
 
 	return typeof this.atom[afterAtom].synR[atom] != 'undefined';
 }
+Template.prototype.evalSymbol = function(sym, obj)
+{
+	var val = obj;
+	for(var k = 0; k < sym.length; k++)
+	{
+		val = val[sym[k]];
+		if(typeof val == 'undefined')
+		{
+			return '';
+		}
+	}
+
+	return val;
+}
+Template.prototype.callHelper = function(sym, obj)
+{
+	var hName = '';
+	var args = sym.args;
+
+	if(sym.name == 'pseudo' && sym.args.length == 1)
+	{
+		// special case: test if argument is a function name
+		var arg = sym.args[0];
+		if(arg.length == 1 && typeof this.vars.helpers[arg[0]] != 'undefined')
+		{
+			hName = arg[0];
+			args = [];
+		}
+		else
+		{
+			hName = 'pseudo';
+		}
+	}
+	else
+	{
+		hName = sym.name;
+	}
+
+	if(typeof this.vars.helpers[hName] == 'undefined')
+	{
+		throw new Error('Unknown helper '+hName);
+	}
+
+	var hArgs = [];
+	for(var k = 0; k < args.length; k++)
+	{
+		hArgs.push(this.evalSymbol(args[k], obj));
+	}
+
+	return this.vars.helpers[hName].apply(obj, hArgs);
+}
 
 // struct
 
-Template.Struct = function(){
+Template.Struct = function()
+{
 	this.current = new Template.node.instruction();
 	this.tree = this.current;
 }
-Template.Struct.prototype.forward = function(node){
+Template.Struct.prototype.forward = function(node)
+{
 	this.append(node);
 	this.current = node;
 }
-Template.Struct.prototype.append = function(node){
+Template.Struct.prototype.append = function(node)
+{
 	node.parent = this.current;
 	this.current.append(node);
 }
-Template.Struct.prototype.backward = function(){
+Template.Struct.prototype.backward = function()
+{
 	this.current = this.current.parent;
 }
-Template.Struct.prototype.symbol = function(sym){
+Template.Struct.prototype.symbol = function(sym)
+{
 	this.current.get().symbol(sym);
 }
 Template.Struct.prototype.get = function(){
 	return this.current.get();
 }
-Template.Struct.prototype.isCurrent = function(type){
-
+Template.Struct.prototype.isCurrent = function(type)
+{
 	if(type == 'instruction')
 	{
 		return this.current instanceof this.instruction;
@@ -411,14 +467,17 @@ Template.Struct.prototype.isCurrent = function(type){
 
 	return this.current instanceof node.instruction[type];
 }
-Template.Struct.prototype.isExpectable = function(atom){
+Template.Struct.prototype.isExpectable = function(atom)
+{
 	return this.current.isExpectable(atom);
 }
-Template.Struct.prototype.atom = function(atom){
+Template.Struct.prototype.atom = function(atom)
+{
 	return this.current.atom(atom);
 }
 
-Template.func = function(arg, name){
+Template.func = function(arg, name)
+{
 	this.name = typeof name == 'undefined' ? 'pseudo' : name;
 	this.args = [];
 
@@ -427,7 +486,8 @@ Template.func = function(arg, name){
 		this.args.push(arg);
 	}
 }
-Template.func.prototype.addArg = function(symbol){
+Template.func.prototype.addArg = function(symbol)
+{
 	if(this.name == 'pseudo' && this.args.length == 1)
 	{
 		if(this.args[0].length > 1)
@@ -471,46 +531,14 @@ node.instruction = function(escape, parser){
 
 	this.parser = parser;
 }
-node.instruction.prototype.eval = function(obj){
-
+node.instruction.prototype.eval = function(obj)
+{
 	// call function
 	var value = '';
 
 	if(this.sym !== null)
 	{
-		var hName = '';
-		var args = [];
-
-		if(this.sym.name == 'pseudo' && this.sym.args.length == 1)
-		{
-			// special case: test if argument is a function name
-			var arg = this.sym.args[0];
-			if(arg.length == 1 && typeof this.parser.vars.helpers[arg[0]] != 'undefined')
-			{
-				hName = arg[0];
-				args = [obj];
-			}
-			else
-			{
-				hName = 'pseudo';
-				args = [this.evalSymbol(this.sym.args[0], obj)];
-			}
-		}
-		else
-		{
-			hName = this.sym.name;
-			for(var k = 0; k < this.sym.args.length; k++)
-			{
-				args.push(this.evalSymbol(this.sym.args[k], obj));
-			}
-		}
-
-		if(typeof this.parser.vars.helpers[hName] == 'undefined')
-		{
-			throw new Error('Unknown helper '+hName);
-		}
-
-		value = this.parser.vars.helpers[hName].apply(obj, args);
+		value = this.parser.callHelper(this.sym, obj);
 	}
 
 	// call sub instructions
@@ -519,22 +547,7 @@ node.instruction.prototype.eval = function(obj){
 		value += this.ch[k].eval(obj);
 	}
 
-	console.dir(value);
-
 	return value;
-}
-node.instruction.prototype.evalSymbol = function(sym, obj){
-	var val = obj;
-	for(var k = 0; k < sym.length; k++)
-	{
-		val = val[sym[k]];
-		if(typeof val == 'undefined')
-		{
-			return '';
-		}
-	}
-
-	return val;
 }
 node.instruction.prototype.append = function(node){
 	this.ch.push(node);
@@ -567,7 +580,34 @@ node.instruction.ifelse = function(parser){
 
 	this.parser = parser;
 }
-node.instruction.ifelse.prototype.eval = function(){
+node.instruction.ifelse.prototype.eval = function(obj)
+{
+	for(var k = 0; k < this.branches.length; k++)
+	{
+		var br = this.branches[k];
+		var res = false;
+		if(br.cond === null)
+		{
+			res = true; // suppose it is 'else'
+		}
+		else
+		{
+			res = this.parser.callHelper(br.cond, obj);
+		}
+
+		if(res)
+		{
+			var value = '';
+
+			// call sub instructions
+			for(var k = 0; k < br.ch.length; k++)
+			{
+				value += br.ch[k].eval(obj);
+			}
+
+			return value;
+		}
+	}
 }
 node.instruction.ifelse.prototype.append = function(node){
 	this.getBranch().ch.push(node);
