@@ -1,8 +1,27 @@
 <script src="parser.js"></script>
 
 <script>
-	var p = new Parser("   Это тестовый {{   TEMPL.ATE}} и {{if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{if hz hzVal}}другому{{else}}этому{{endif}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}");
-	var struct = p.parse();
+	var p = new Template("   Это тестовый {{   TEMPL.ATE}} {{	testHelper }} и {{if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{if hz hzVal}}другому{{else}}этому{{endif}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}");
 
-	console.dir(struct);
+	console.dir(p.getStruct());
+
+	p.registerHelper('testHelper', function(obj){
+		return 'результат тестового хелпера';
+	});
+	p.registerHelper('oneHelper', function(obj){
+		return 'первый хелпер';
+	});
+	p.registerHelper('hz', function(obj){
+		return 'hz хелпер';
+	});
+	p.registerHelper('anotherHelper', function(obj){
+		return 'другой хелпер';
+	});
+
+	var obj = {
+		'TEMPL': {'ATE': 'полная жопа'},
+		'unescaped': 'unescaped',
+	};
+
+	p.get(obj);
 </script>

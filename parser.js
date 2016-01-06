@@ -1,7 +1,7 @@
-Parser = function (str)
+Template = function (str)
 {
 	this.str = str.toString();
-	this.struct = new Parser.Struct();
+	this.struct = new Template.Struct();
 
 	// each atom may be followed with space (sp), and space may be follewed with any instruction
 	// atoms like "io", "iou" change context to 'instruction' and atoms "ic" and "icu" change context back to "text"
@@ -62,7 +62,7 @@ Parser = function (str)
 				return this.substr(i, 'if ');
 			},
 			do: 	function(){
-				this.struct.forward(new Parser.node.instruction.ifelse());
+				this.struct.forward(new Template.node.instruction.ifelse(this));
 			},
 			syn: 	['sym','','','','','','','','',],
 		},
@@ -131,7 +131,7 @@ Parser = function (str)
 
 				if(this.vars.instructionDetected != false)
 				{
-					this.struct.append(new Parser.node.instruction(this.vars.instructionDetected == 'E'));
+					this.struct.append(new Template.node.instruction(this.vars.instructionDetected == 'E', this));
 				}
 				this.struct.symbol(spl);
 			},
@@ -161,14 +161,21 @@ Parser = function (str)
 	}
 
 	this.vars = {
-		ctxIns: false,
-		at: null,
-		chunk: '',
-		all: all,
-		instructionDetected: false
+		ctxIns: 					false,
+		at: 						null,
+		chunk: 				'',
+		all: 					all,
+		instructionDetected: 	false,
+		helpers: 				{
+			'pseudo': function(arg){
+				return arg;
+			}
+		}
 	}
+
+	this.compile();
 }
-Parser.prototype.walk = function(i, cb)
+Template.prototype.walk = function(i, cb)
 {
 	for(var k = i; k < this.str.length; k++)
 	{
@@ -178,7 +185,7 @@ Parser.prototype.walk = function(i, cb)
 		}
 	}
 }
-Parser.prototype.detectAtom = function(i)
+Template.prototype.detectAtom = function(i)
 {
 	var ctx = this.vars.ctx;
 	var at = this.vars.at;
@@ -235,7 +242,11 @@ Parser.prototype.detectAtom = function(i)
 		};
 	}
 }
-Parser.prototype.parse = function()
+Template.prototype.getStruct = function()
+{
+	return this.struct;
+}
+Template.prototype.compile = function()
 {
 	if(this.str.length)
 	{
@@ -279,7 +290,18 @@ Parser.prototype.parse = function()
 		}
 	}
 }
-Parser.prototype.isTxt = function(sw)
+Template.prototype.get = function(obj)
+{
+	return this.struct.tree.eval(obj);
+}
+Template.prototype.registerHelper = function(name, cb)
+{
+	if(typeof name == 'string' && name.length > 0 && typeof cb == 'function')
+	{
+		this.vars.helpers[name] = cb;
+	}
+}
+Template.prototype.isTxt = function(sw)
 {
 	if(sw)
 	{
@@ -288,7 +310,7 @@ Parser.prototype.isTxt = function(sw)
 
 	return !this.vars.ctxIns;
 }
-Parser.prototype.isInst = function(sw, escape)
+Template.prototype.isInst = function(sw, escape)
 {
 	if(sw)
 	{
@@ -298,23 +320,23 @@ Parser.prototype.isInst = function(sw, escape)
 
 	return this.vars.ctxIns;
 }
-Parser.prototype.evalAtom = function(found, j)
+Template.prototype.evalAtom = function(found, j)
 {
 	return this.atom[found.atom].do.apply(this, [found.val, j, found.offs]);
 }
-Parser.prototype.saveTextChunk = function()
+Template.prototype.saveTextChunk = function()
 {
 	if(this.vars.chunk != '')
 	{
-		this.struct.append(new Parser.node.static(this.vars.chunk));
+		this.struct.append(new Template.node.static(this.vars.chunk));
 		this.vars.chunk = '';
 	}
 }
-Parser.prototype.appendChunk = function(i)
+Template.prototype.appendChunk = function(i)
 {
 	this.vars.chunk += this.str[i];
 }
-Parser.prototype.substr = function(i, str)
+Template.prototype.substr = function(i, str)
 {
 	if(this.str.substr(i, str.length) == str)
 	{
@@ -325,7 +347,7 @@ Parser.prototype.substr = function(i, str)
 	}
 	return false;
 }
-Parser.prototype.findSeq = function(i, expr)
+Template.prototype.findSeq = function(i, expr)
 {
 	var expr = new RegExp('^('+expr+'+)');
 	var substr = this.str.substr(i, this.str.length - i);
@@ -347,7 +369,7 @@ Parser.prototype.findSeq = function(i, expr)
 		inst: inst
 	}
 }
-Parser.prototype.isExpectable = function(atom, afterAtom)
+Template.prototype.isExpectable = function(atom, afterAtom)
 {
 	if(afterAtom == null)
 	{
@@ -359,28 +381,28 @@ Parser.prototype.isExpectable = function(atom, afterAtom)
 
 // struct
 
-Parser.Struct = function(){
-	this.current = new Parser.node.instruction();
+Template.Struct = function(){
+	this.current = new Template.node.instruction();
 	this.tree = this.current;
 }
-Parser.Struct.prototype.forward = function(node){
+Template.Struct.prototype.forward = function(node){
 	this.append(node);
 	this.current = node;
 }
-Parser.Struct.prototype.append = function(node){
+Template.Struct.prototype.append = function(node){
 	node.parent = this.current;
 	this.current.append(node);
 }
-Parser.Struct.prototype.backward = function(){
+Template.Struct.prototype.backward = function(){
 	this.current = this.current.parent;
 }
-Parser.Struct.prototype.symbol = function(sym){
+Template.Struct.prototype.symbol = function(sym){
 	this.current.get().symbol(sym);
 }
-Parser.Struct.prototype.get = function(){
+Template.Struct.prototype.get = function(){
 	return this.current.get();
 }
-Parser.Struct.prototype.isCurrent = function(type){
+Template.Struct.prototype.isCurrent = function(type){
 
 	if(type == 'instruction')
 	{
@@ -389,15 +411,15 @@ Parser.Struct.prototype.isCurrent = function(type){
 
 	return this.current instanceof node.instruction[type];
 }
-Parser.Struct.prototype.isExpectable = function(atom){
+Template.Struct.prototype.isExpectable = function(atom){
 	return this.current.isExpectable(atom);
 }
-Parser.Struct.prototype.atom = function(atom){
+Template.Struct.prototype.atom = function(atom){
 	return this.current.atom(atom);
 }
 
-Parser.func = function(arg, name){
-	this.name = typeof name == 'undefined' ? 'asis' : name;
+Template.func = function(arg, name){
+	this.name = typeof name == 'undefined' ? 'pseudo' : name;
 	this.args = [];
 
 	if(typeof arg != 'undefined')
@@ -405,8 +427,8 @@ Parser.func = function(arg, name){
 		this.args.push(arg);
 	}
 }
-Parser.func.prototype.addArg = function(symbol){
-	if(this.name == 'asis' && this.args.length == 1)
+Template.func.prototype.addArg = function(symbol){
+	if(this.name == 'pseudo' && this.args.length == 1)
 	{
 		if(this.args[0].length > 1)
 		{
@@ -423,7 +445,7 @@ Parser.func.prototype.addArg = function(symbol){
 // types of node
 
 var node = {};
-Parser.node = node;
+Template.node = node;
 
 // text node
 node.static = function(val){
@@ -442,13 +464,77 @@ node.static.prototype.atom = function(i){
 }
 
 // instruction node
-node.instruction = function(escape){
+node.instruction = function(escape, parser){
 	this.escape = !!escape;
 	this.sym = null;
 	this.ch = [];
+
+	this.parser = parser;
 }
 node.instruction.prototype.eval = function(obj){
-	//return this.value;
+
+	// call function
+	var value = '';
+
+	if(this.sym !== null)
+	{
+		var hName = '';
+		var args = [];
+
+		if(this.sym.name == 'pseudo' && this.sym.args.length == 1)
+		{
+			// special case: test if argument is a function name
+			var arg = this.sym.args[0];
+			if(arg.length == 1 && typeof this.parser.vars.helpers[arg[0]] != 'undefined')
+			{
+				hName = arg[0];
+				args = [obj];
+			}
+			else
+			{
+				hName = 'pseudo';
+				args = [this.evalSymbol(this.sym.args[0], obj)];
+			}
+		}
+		else
+		{
+			hName = this.sym.name;
+			for(var k = 0; k < this.sym.args.length; k++)
+			{
+				args.push(this.evalSymbol(this.sym.args[k], obj));
+			}
+		}
+
+		if(typeof this.parser.vars.helpers[hName] == 'undefined')
+		{
+			throw new Error('Unknown helper '+hName);
+		}
+
+		value = this.parser.vars.helpers[hName].apply(obj, args);
+	}
+
+	// call sub instructions
+	for(var k = 0; k < this.ch.length; k++)
+	{
+		value += this.ch[k].eval(obj);
+	}
+
+	console.dir(value);
+
+	return value;
+}
+node.instruction.prototype.evalSymbol = function(sym, obj){
+	var val = obj;
+	for(var k = 0; k < sym.length; k++)
+	{
+		val = val[sym[k]];
+		if(typeof val == 'undefined')
+		{
+			return '';
+		}
+	}
+
+	return val;
 }
 node.instruction.prototype.append = function(node){
 	this.ch.push(node);
@@ -456,7 +542,7 @@ node.instruction.prototype.append = function(node){
 node.instruction.prototype.symbol = function(symbol){
 	if(this.sym == null)
 	{
-		this.sym = new Parser.func(symbol);
+		this.sym = new Template.func(symbol);
 	}
 	else
 	{
@@ -474,10 +560,12 @@ node.static.prototype.atom = function(i){
 }
 
 // if node
-node.instruction.ifelse = function(val){
+node.instruction.ifelse = function(parser){
 	this.branches = [];
 	this.newBranch();
 	this.metElse = false;
+
+	this.parser = parser;
 }
 node.instruction.ifelse.prototype.eval = function(){
 }
@@ -492,7 +580,7 @@ node.instruction.ifelse.prototype.symbol = function(symbol){
 
 	if(lastBr.cond == null)
 	{
-		lastBr.cond = new Parser.func(symbol);
+		lastBr.cond = new Template.func(symbol);
 	}
 	else
 	{
