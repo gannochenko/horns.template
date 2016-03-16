@@ -1,7 +1,7 @@
 <script src="../src/parser.js"></script>
 
 <script>
-	var p = new Template("   Это тестовый {{   TEMPL.ATE}} {{	testHelper }} и {{if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{if hz hzVal}}другому{{else}}этому{{endif}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}");
+	var p = Horns.compile("   Это тестовый {{   TEMPL.ATE}} {{	testHelper }} и {{if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{if hz hzVal}}другому{{else}}этому{{endif}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}");
 
 	console.dir(p.getStruct());
 
