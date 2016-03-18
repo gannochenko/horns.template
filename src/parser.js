@@ -7,13 +7,14 @@
 			throw new TypeError('A bit questionable');
 		}
 
-		this.str = str.toString(); // todo: do not keep this.str, keep only struct insted
+		//console.log('"'+str+'"');
+
+		this.str = str.toString();
 		this.struct = new Horns.Struct();
 		this.vars = {
 			ctxIns: 					false,
 			at: 						null,
 			chunk: 				'',
-			all: 					Horns.prototype.atoms, // tmp
 			instructionDetected: 	false,
 			helpers: 				{
 				'pseudo': function(arg){
@@ -23,6 +24,7 @@
 		};
 
 		this.buildStruct();
+		delete(this.str);
 	};
 	Horns.compile = function(str)
 	{
@@ -161,6 +163,11 @@
 			syn: 	{'ic':true,'icu':true,'sp':true},
 		}// introduce allowed characters here
 	};
+	p.atomList = [];
+	for(var k in p.atoms)
+	{
+		p.atomList.push(k);
+	}
 
 	p.walk = function(i, cb)
 	{
@@ -178,7 +185,7 @@
 		var at = this.vars.at;
 		var expect = null;
 		var found = false;
-		var all = this.isTxt() ? ['iou','io'] : this.vars.all;
+		var all = this.isTxt() ? ['iou','io'] : this.atomList;
 
 		for(var k = 0; k < all.length; k++)
 		{
@@ -187,7 +194,7 @@
 				continue;
 			}
 
-			//if(this.isInst()) console.dir('check for '+all[k]);
+			//if(this.isInst())console.dir('check for '+all[k]);
 
 			found = this.atoms[all[k]].find.apply(this, [i]);
 			if(found !== false)
@@ -200,7 +207,7 @@
 		{
 			if(this.isInst())
 			{
-				throw new Error('Parse error at '+i);
+				this.showError(i, 'Unexpected "'+this.str[i]+'"');
 			}
 			else
 			{
@@ -217,7 +224,7 @@
 			// check if it was expected
 			if(!this.isExpectable(all[k], at))
 			{
-				throw new Error('Unexpected '+all[k]);
+				this.showError(i, 'Unexpected "'+all[k]+'"');
 			}
 
 			this.vars.at = all[k];
@@ -228,7 +235,22 @@
 				offs: 	found.offs
 			};
 		}
-	}
+	};
+	p.showError = function(i, message)
+	{
+		i += 1;
+		message = message || '';
+
+		var range = 30;
+		var l = this.str.length;
+		var leftRange = Math.min(range, i);
+		var rightRange = i+range > l ? l - (i+range) : range;
+
+		var chunk = (i > range ? '...' : '')+this.str.substr(i-leftRange, leftRange)+this.str.substr(i, rightRange)+(i+range < l ? '...' : '');
+		var cap = (i > range ? '   ' : '')+' '.repeat(leftRange - 1)+'^';
+
+		throw new Error('Parse error at '+i+': '+message+"\r\n"+chunk+"\r\n"+cap);
+	};
 	p.getStruct = function()
 	{
 		return this.struct;
@@ -363,7 +385,7 @@
 			return true;
 		}
 
-		return typeof this.atoms[afterAtom].synR[atom] != 'undefined';
+		return typeof this.atoms[afterAtom].syn[atom] != 'undefined';
 	};
 	p.evalSymbol = function(sym, obj)
 	{
@@ -449,10 +471,10 @@
 	{
 		if(type == 'instruction')
 		{
-			return this.current instanceof this.instruction;
+			return this.current instanceof Horns.node.instruction;
 		}
 
-		return this.current instanceof node.instruction[type];
+		return this.current instanceof Horns.node.instruction[type];
 	}
 	Horns.Struct.prototype.isExpectable = function(atom)
 	{
