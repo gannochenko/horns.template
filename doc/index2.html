@@ -1,0 +1,89 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Title</title>
+    </head>
+    <body>
+
+        <script src="../src/parser.js"></script>
+        <script>
+            var tests = [
+
+                {
+                    template:
+                    "   Это тестовый {{   TEMPL.ATE}} {{	testHelper }} и {{#if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{#if hz hzVal}}другому{{else}}этомsdfdfdsу{{/if}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}",
+                    data: {
+                        'TEMPL': {'ATE': 'полная жопа'},
+                        'unescaped': 'unescaped',
+                        'one': {'Helper': {'Value':'ohv'}}
+                    }
+                },
+
+                /*
+                {
+                    template: "Тест {{#ifEmu}}logic-less if{{/ifEmu}}, а этот мусор не будет показан: {{#ifNotEmu}}МУСОР!{{/ifNotEmu}}",
+                    data: {
+                        ifEmu: true,
+                        ifNotEmu: false
+                    }
+                },
+                {
+                    template: "Это тест оператора {{opName}}. Повторения: {{#several}} Имя: {{name}} {{/several}}",
+                    data: {
+                        opName: 'цикла',
+                        several: [
+                            {
+                                name: 'Joe Black'
+                            },
+                            {
+                                name: 'Kalvin Klein'
+                            },
+                            {
+                                name: 'Howard the Duck'
+                            }
+                        ]
+                    }
+                },
+                {
+                    template: "Это {{safe}}, а это {{{unsafe}}}",
+                    data: {
+                        safe: 'безопасно',
+                        unsafe: "<b>небезопасно</b>"
+                    },
+                    name: 'nested'
+                },
+                {
+                    template: "Про {{what}} {{{>nested}}}: это только что был вложенный шаблон",
+                    data: {
+                        what: 'безопасность',
+                    }
+                }
+                */
+            ];
+
+            for(var k in tests)
+            {
+                var p = new Horns.compile(tests[k].template);
+
+                p.registerHelper('testHelper', function(obj){
+                    return 'результат тестового хелпера';
+                });
+                p.registerHelper('oneHelper', function(obj){
+                    return false;
+                });
+                p.registerHelper('hz', function(obj){
+                    return false;
+                });
+                p.registerHelper('anotherHelper', function(){
+                    return true;
+                });
+
+                console.dir(p.get(tests[k].data));
+            }
+
+        </script>
+
+
+    </body>
+    </html>
