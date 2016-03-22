@@ -2,13 +2,13 @@
 
 	Horns = function(str)
 	{
-		if(typeof str == 'undefined' || str === null)
+		if(typeof str != 'string')
 		{
-			throw new TypeError('A bit questionable');
+			str = '';
 		}
 
-		this.str = str.toString(); // string to be parsed
-		this.struct = new Horns.Struct(); // struct to be build, for further usages
+		this.str = str; // string to be parsed
+		this.struct = new Horns.Struct(); // struct to be built, for further usages
 		this.vars = { // some runtimes
 			tag: false, // flag that indicates whether we are inside {{}} or not
 			at: null, // current atom detected (replace with history)
@@ -33,14 +33,14 @@
 	p.atoms = {
 		sp: {
 			find: 	function(i){
-				return this.findSeq(i, '\\s');
+				return this.testSequence(i, '\\s');
 			},
 			do: 	function(){},
 			syn: 	{'if_':true,'elseif':true,'el':true,'endif':true,'io':true,'iou':true,'ic':true,'icu':true,'sym':true}
 		},
 		iou: {
 			find: 	function(i){
-				return this.substr(i, '{{{');
+				return this.testSubString(i, '{{{');
 			},
 			do: 	function(){
 				this.saveTextChunk();
@@ -50,7 +50,7 @@
 		},
 		io: {
 			find: 	function(i){
-				return this.substr(i, '{{');
+				return this.testSubString(i, '{{');
 			},
 			do: 	function(){
 				this.saveTextChunk();
@@ -60,10 +60,15 @@
 		},
 		icu: {
 			find: 	function(i){
-				return this.substr(i, '}}}');
+				return this.testSubString(i, '}}}');
 			},
-			do: 	function(){
-				// todo: check there was an {{{ instruction, not {{
+			do: 	function()
+			{
+				if(this.vars.tag.safe) // entered to safe, exiting as unsafe?
+				{
+					this.showError('Unexpected "}}}"');
+				}
+
 				this.inTag(false); // going out of the instruction
 			},
 			syn: 	{'io':true,'iou':true,'sp':true},
@@ -71,17 +76,22 @@
 		// instruction close }}
 		ic: {
 			find: 	function(i){
-				return this.substr(i, '}}');
+				return this.testSubString(i, '}}');
 			},
-			do: 	function(){
-				// todo: check there was an {{ instruction, not {{{
+			do: 	function()
+			{
+				if(!this.vars.tag.safe) // entered to unsafe, exiting as safe?
+				{
+					this.showError('Unexpected "}}"');
+				}
+
 				this.inTag(false); // going out of the instruction
 			},
 			syn: 	{'io':true,'iou':true,'sp':true},
 		},
 		hash: {
 			find: 	function(i){
-				return this.substr(i, '#');
+				return this.testSubString(i, '#');
 			},
 			do: 	function(){
 
@@ -90,7 +100,7 @@
 		},
 		slash: {
 			find: 	function(i){
-				return this.substr(i, '/');
+				return this.testSubString(i, '/');
 			},
 			do: 	function(){
 			},
@@ -99,7 +109,7 @@
 		// if
 		if_: {
 			find: 	function(i){
-				return this.substr(i, 'if ');
+				return this.testSubString(i, 'if ');
 			},
 			do: 	function()
 			{
@@ -118,7 +128,7 @@
 		// elseif
 		elseif: {
 			find: 	function(i){
-				return this.substr(i, 'elseif ');
+				return this.testSubString(i, 'elseif ');
 			},
 			do: 	function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('elseif'))
@@ -132,7 +142,7 @@
 		// else
 		el: {
 			find: 	function(i){
-				return this.substr(i, 'else');
+				return this.testSubString(i, 'else');
 			},
 			do: 	function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('else'))
@@ -147,7 +157,7 @@
 		// endif
 		endif: {
 			find: 	function(i){
-				return this.substr(i, 'endif');
+				return this.testSubString(i, 'endif');
 			},
 			do: 	function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('endif'))
@@ -159,10 +169,10 @@
 			syn: 	{'ic':true,'sp':true}
 		},
 
-		// all other is SYMBOL, goes at the end
+		// all other is SYMBOL. This rule must go at the end always
 		sym: {
 			find: 	function(i){
-				return this.findSeq(i, '[a-zA-Z0-9_\\.]');
+				return this.testSequence(i, '[a-zA-Z0-9_\\.]');
 			},
 			do: 	function(value, i){
 
@@ -176,7 +186,7 @@
 					{
 						this.showError('Unexpected "." (dot)');
 					}
-					offs += spl[k].length+1;
+					offs += spl[k].length + 1;
 				}
 
 				if(this.vars.tag != false)
@@ -206,14 +216,6 @@
 	};
 	p.lastAtom = function(at)
 	{
-		if(typeof at == 'undefined')
-		{
-			return this.vars.at;
-		}
-		else
-		{
-			this.vars.at = at;
-		}
 	};
 	p.detectAtom = function(i)
 	{
@@ -255,7 +257,7 @@
 		}
 		else
 		{
-			console.dir('>>>>> at '+i+' found: '+all[k]+' with offset '+found.offs+' and value '+found.inst+' (prev:'+at+')');
+			console.dir('>>>>> at '+i+' found: '+all[k]+' with value '+found+' (prev:'+at+')');
 			//console.dir(at);
 
 			// check if it was expected
@@ -266,13 +268,14 @@
 
 			if(all[k] != 'sp') // save atom just found for the next iteration
 			{
-				this.vars.at = all[k];
+				this.vars.tag.atoms.push(all[k]);
+				this.vars.at = all[k]; // temporal
 			}
 
 			return {
 				atom: 	all[k],
-				value: 	found.inst,
-				offset: found.offs // increase offset by atom value length
+				value: 	found,
+				offset: found.length // increase offset by atom value length
 			};
 		}
 	};
@@ -354,7 +357,7 @@
 	{
 		if(typeof sw != 'undefined')
 		{
-			this.vars.tag = sw ? {safe: safe} : false;
+			this.vars.tag = sw ? {safe: safe, atoms: []} : false;
 		}
 		else
 		{
@@ -378,25 +381,21 @@
 		this.vars.chunk += this.str[i];
 	};
 	// test if this.str has substring that equal to str at position i
-	p.substr = function(i, str)
+	p.testSubString = function(i, str)
 	{
 		if(this.str.substr(i, str.length) == str)
 		{
-			return {
-				offs: str.length,
-				inst: str
-			}
+			return str;
 		}
 		return false;
 	};
 	// test if a substring of this.str that starts from i matches a given regular expression. if match, return it
-	p.findSeq = function(i, expr)
+	p.testSequence = function(i, expr)
 	{
 		var expr = new RegExp('^('+expr+'+)');
-		var substr = this.str.substr(i, this.str.length - i);
 
 		var inst = false;
-		var r = substr.match(expr);
+		var r = this.str.substr(i, this.str.length - i).match(expr);
 		if(r != null && typeof r[1] != 'undefined')
 		{
 			inst = r[1];
@@ -407,10 +406,7 @@
 			return false;
 		}
 
-		return {
-			offs: inst.length,
-			inst: inst
-		}
+		return inst;
 	};
 	p.isExpectable = function(atom, afterAtom)
 	{
