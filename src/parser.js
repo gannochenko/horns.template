@@ -23,46 +23,55 @@
 
 		this.buildStruct();
 		delete(this.str);
+
+		if(Horns.debugMode)
+		{
+			console.dir(this.struct);
+		}
 	};
 	Horns.compile = function(str)
 	{
 		return new Horns(str);
 	};
+	Horns.debug = function(flag)
+	{
+		this.debugMode = flag;
+	};
 
 	var p = Horns.prototype;
 	p.atoms = {
 		sp: {
-			find: 	function(i){
+			find: function(i){
 				return this.testSequence(i, '\\s');
 			},
-			do: 	function(){},
-			syn: 	{'if':true,'elseif':true,'else':true,'endif':true,'io':true,'iou':true,'ic':true,'icu':true,'sym':true}
+			do: function(){},
+			syn: {'if':true,'elseif':true,'else':true,'endif':true,'io':true,'iou':true,'ic':true,'icu':true,'sym':true}
 		},
 		iou: {
-			find: 	function(i){
+			find: function(i){
 				return this.testSubString(i, '{{{');
 			},
-			do: 	function(){
+			do: function(){
 				this.saveTextChunk();
 				this.inTag(true, false);
 			},
-			syn: 	{'icu':true,'sym':true,'sp':true},
+			syn: {'icu':true,'sym':true,'sp':true},
 		},
 		io: {
-			find: 	function(i){
+			find: function(i){
 				return this.testSubString(i, '{{');
 			},
-			do: 	function(){
+			do: function(){
 				this.saveTextChunk();
 				this.inTag(true, true);
 			},
-			syn: 	{'hash':true,'slash':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
+			syn: {'hash':true,'slash':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
 		},
 		icu: {
-			find: 	function(i){
+			find: function(i){
 				return this.testSubString(i, '}}}');
 			},
-			do: 	function()
+			do: function()
 			{
 				if(this.vars.tag.safe) // entered to safe, exiting as unsafe?
 				{
@@ -71,14 +80,14 @@
 
 				this.inTag(false); // going out of the instruction
 			},
-			syn: 	{'io':true,'iou':true,'sp':true},
+			syn: {'io':true,'iou':true,'sp':true},
 		},
 		// instruction close }}
 		ic: {
-			find: 	function(i){
+			find: function(i){
 				return this.testSubString(i, '}}');
 			},
-			do: 	function()
+			do: function()
 			{
 				if(!this.vars.tag.safe) // entered to unsafe, exiting as safe?
 				{
@@ -87,30 +96,29 @@
 
 				this.inTag(false); // going out of the instruction
 			},
-			syn: 	{'io':true,'iou':true,'sp':true},
+			syn: {'io':true,'iou':true,'sp':true},
 		},
 		hash: {
-			find: 	function(i){
+			find: function(i){
 				return this.testSubString(i, '#');
 			},
-			do: 	function(){
-
+			do: function(){
 			},
-			syn: 	{'if':true,'each':true,'sym':true,'sp':true},
+			syn: {'if':true,'each':true,'sym':true,'sp':true},
 		},
 		slash: {
-			find: 	function(i){
+			find: function(i){
 				return this.testSubString(i, '/');
 			},
-			do: 	function(){
+			do: function(){
 			},
-			syn: 	{'if':true,'each':true,'sym':true,'sp':true},
+			syn: {'if':true,'each':true,'sym':true,'sp':true},
 		},
 		'if': {
-			find: 	function(i){
+			find: function(i){
 				return this.testKeyWord(i, 'if');
 			},
-			do: 	function()
+			do: function()
 			{
 				if(this.lastAtom().atom == 'slash')
 				{
@@ -121,54 +129,54 @@
 					this.struct.forward(new Horns.node.instruction.ifelse(this));
 				}
 			},
-			syn: 	{'ic':true, 'sym':true,'sp':true},
+			syn: {'ic':true, 'sym':true,'sp':true},
 		},
 		'elseif': {
-			find: 	function(i){
+			find: function(i){
 				return this.testKeyWord(i, 'elseif');
 			},
-			do: 	function(){
+			do: function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('elseif'))
 				{
 					this.showError('Unexpected "elseif"');
 				}
 				this.struct.atoms('elseif');
 			},
-			syn: 	{'sym':true,'sp':true},
+			syn: {'sym':true,'sp':true},
 		},
 		'else': {
-			find: 	function(i){
+			find: function(i){
 				return this.testKeyWord(i, 'else');
 			},
-			do: 	function(){
+			do: function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('else'))
 				{
 					this.showError('Unexpected "else"');
 				}
 				this.struct.atoms('else');
 			},
-			syn: 	{'ic':true,'sp':true},
+			syn: {'ic':true,'sp':true},
 		},
 		endif: {
-			find: 	function(i){
+			find: function(i){
 				return this.testKeyWord(i, 'endif');
 			},
-			do: 	function(){
+			do: function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('endif'))
 				{
 					this.showError('Unexpected "endif"');
 				}
 				this.struct.backward();
 			},
-			syn: 	{'ic':true,'sp':true}
+			syn: {'ic':true,'sp':true}
 		},
 
 		// all other is SYMBOL. This rule must go at the end always
 		sym: {
-			find: 	function(i){
+			find: function(i){
 				return this.testSequence(i, '[a-zA-Z0-9_\\.]');
 			},
-			do: 	function(value, i){
+			do: function(value, i){
 
 				var spl = value.split('.');
 
@@ -185,7 +193,7 @@
 
 				this.struct.symbol(spl);
 			},
-			syn: 	{'ic':true,'icu':true,'sym':true,'sp':true}
+			syn: {'ic':true,'icu':true,'sym':true,'sp':true}
 		}// introduce allowed characters here
 	};
 	p.atomList = []; // a list of atoms symbolic codes
@@ -240,8 +248,6 @@
 				continue;
 			}
 
-			//if(this.inTag())console.dir('check for '+all[k]);
-
 			found = this.atoms[all[k]].find.apply(this, [i]);
 			if(found !== false)
 			{
@@ -270,12 +276,15 @@
 				offset: found.length // increase offset by atom value length
 			};
 
-			console.dir(result.offset+': '+result.atom+' ('+result.value+')');
+			if(Horns.debugMode)
+			{
+				console.dir(result.offset+': '+result.atom+' ('+result.value+')');
+			}
 
 			// check if it was expected
 			if(!this.isExpectable(result))
 			{
-				this.showError('Unexpected "'+result.atom+'"');
+				this.showError('Unexpected "'+result.value+'"');
 			}
 		}
 
@@ -360,7 +369,7 @@
 	{
 		if(typeof sw != 'undefined')
 		{
-			if(!sw)
+			if(Horns.debugMode && !sw)
 			{
 				console.dir('-------------------------------');
 			}

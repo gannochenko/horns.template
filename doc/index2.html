@@ -11,78 +11,28 @@
             var tests = [
 
                 {
-                    template: "   Вступив в бой с {{animalAdj animal.bad}} {{  animal.bad  }} — {{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}} {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}, {{if hasWeapon}}(из оружия было: {{weapon.name}} ({{weapon.slot.type}} {{weapon.slot.name}})){{endif}}— {{animalAdjGood}} {{animal.good}} {{whatGoodAnimalDid}}",
+                    template: "   Вступив в бой{{#howEntered}} ({{howEntered}}){{/howEntered}} с {{animalAdj animal.bad}} {{  animal.bad  }} — {{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}} {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}, {{if hasWeapon}}(из оружия было: {{weapon.name}} ({{weapon.slot.type}} {{weapon.slot.name}})){{endif}}— {{animalAdjGood}} {{animal.good}} {{whatGoodAnimalDid}}. Получено ранений: {{#injures}} {{name}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}}",
                     data: {
                         'animal': {'good': 'ежик', bad: 'мангустом и кабаном'},
-                        weapon: {name: 'монтировка', slot: {name: 'рука', type:'левая'}}
+                        weapon: {name: 'монтировка', slot: {name: 'рука', type:'левая'}},
+                        howEntered: 'быстро',
+                        injures: [
+                            {name: 'рваная рана руки'},
+                            {name: 'порез сосков', severity: 'низкая'},
+                            {name: 'синяк на яичке', severity: 'высочайшая'},
+                        ]
                         //'unescaped': 'unescaped',
                         //'one': {'Helper': {'Value':'value'}}
                     }
                 },
-
-                /*
-                {
-                    template: "Тест {{#ifEmu}}logic-less if{{/ifEmu}}, а этот мусор не будет показан: {{#ifNotEmu}}МУСОР!{{/ifNotEmu}}",
-                    data: {
-                        ifEmu: true,
-                        ifNotEmu: false
-                    }
-                },
-                {
-                    template: "Это тест оператора {{opName}}. Повторения: {{#several}} Имя: {{name}} {{/several}}",
-                    data: {
-                        opName: 'цикла',
-                        several: [
-                            {
-                                name: 'Joe Black'
-                            },
-                            {
-                                name: 'Kalvin Klein'
-                            },
-                            {
-                                name: 'Howard the Duck'
-                            }
-                        ]
-                    }
-                },
-                {
-                    template: "Это {{safe}}, а это {{{unsafe}}}",
-                    data: {
-                        safe: 'безопасно',
-                        unsafe: "<b>небезопасно</b>"
-                    },
-                    name: 'nested'
-                },
-                {
-                    template: "Про {{what}} {{{>nested}}}: это только что был вложенный шаблон",
-                    data: {
-                        what: 'безопасность',
-                    }
-                }
-                */
             ];
+
+            Horns.debug(true);
 
             for(var k in tests)
             {
                 var p = new Horns.compile(tests[k].template);
 
-                /*
-                p.registerHelper('iftestHelper', function(obj){
-                    return 'результат тестового хелпера';
-                });
-                p.registerHelper('oneHelper', function(obj){
-
-                    return obj == 'value';//'>'+obj+'<';
-                });
-                p.registerHelper('hz', function(obj){
-                    return false;
-                });
-                p.registerHelper('anotherHelper', function(){
-                    return true;
-                });
-
-
-                */
                 p.registerHelper('animalAdj', function(animal){
 
                     if(animal == 'змеями')
