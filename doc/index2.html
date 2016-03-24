@@ -12,11 +12,11 @@
 
                 {
                     template:
-                    "   Это тестовый {{   TEMPL.ATE}} {{	testHelper }} и {{#if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{#if hz hzVal}}другому{{else}}этомsdfdfdsу{{/if}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}",
+                    "   Это тестовый {{   TEMPL.ATE}} {{	iftestHelper }} и {{#if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{#if hz hzVal}}другому{{else}}этому{{/if}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}",
                     data: {
-                        'TEMPL': {'ATE': 'полная жопа'},
+                        'TEMPL': {'ATE': 'шаблон'},
                         'unescaped': 'unescaped',
-                        'one': {'Helper': {'Value':'ohv'}}
+                        'one': {'Helper': {'Value':'"one.helper.value"'}}
                     }
                 },
 
@@ -66,7 +66,7 @@
             {
                 var p = new Horns.compile(tests[k].template);
 
-                p.registerHelper('testHelper', function(obj){
+                p.registerHelper('iftestHelper', function(obj){
                     return 'результат тестового хелпера';
                 });
                 p.registerHelper('oneHelper', function(obj){

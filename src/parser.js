@@ -36,7 +36,7 @@
 				return this.testSequence(i, '\\s');
 			},
 			do: 	function(){},
-			syn: 	{'if_':true,'elseif':true,'el':true,'endif':true,'io':true,'iou':true,'ic':true,'icu':true,'sym':true}
+			syn: 	{'if':true,'elseif':true,'else':true,'endif':true,'io':true,'iou':true,'ic':true,'icu':true,'sym':true}
 		},
 		iou: {
 			find: 	function(i){
@@ -56,7 +56,7 @@
 				this.saveTextChunk();
 				this.inTag(true, true);
 			},
-			syn: 	{'hash':true,'slash':true,'elseif':true,'el':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
+			syn: 	{'hash':true,'slash':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
 		},
 		icu: {
 			find: 	function(i){
@@ -96,7 +96,7 @@
 			do: 	function(){
 
 			},
-			syn: 	{'if_':true,'each':true,'sym':true,'sp':true},
+			syn: 	{'if':true,'each':true,'sym':true,'sp':true},
 		},
 		slash: {
 			find: 	function(i){
@@ -104,31 +104,28 @@
 			},
 			do: 	function(){
 			},
-			syn: 	{'if_':true,'each':true,'sym':true,'sp':true},
+			syn: 	{'if':true,'each':true,'sym':true,'sp':true},
 		},
-		// if
-		if_: {
+		'if': {
 			find: 	function(i){
-				return this.testSubString(i, 'if ');
+				return this.testKeyWord(i, 'if');
 			},
 			do: 	function()
 			{
-				if(this.lastAtom() == 'slash')
+				if(this.lastAtom().atom == 'slash')
 				{
-					console.dir('exit if');
-					this.atoms.endif.do.apply(this);
+					this.atoms.endif.do.apply(this); // "\if" is treated as "endif"
 				}
 				else
 				{
 					this.struct.forward(new Horns.node.instruction.ifelse(this));
 				}
 			},
-			syn: 	{'sym':true,'sp':true},
+			syn: 	{'ic':true, 'sym':true,'sp':true},
 		},
-		// elseif
-		elseif: {
+		'elseif': {
 			find: 	function(i){
-				return this.testSubString(i, 'elseif ');
+				return this.testKeyWord(i, 'elseif');
 			},
 			do: 	function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('elseif'))
@@ -139,25 +136,22 @@
 			},
 			syn: 	{'sym':true,'sp':true},
 		},
-		// else
-		el: {
+		'else': {
 			find: 	function(i){
-				return this.testSubString(i, 'else');
+				return this.testKeyWord(i, 'else');
 			},
 			do: 	function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('else'))
 				{
-					console.dir(this.struct);
 					this.showError('Unexpected "else"');
 				}
 				this.struct.atoms('else');
 			},
 			syn: 	{'ic':true,'sp':true},
 		},
-		// endif
 		endif: {
 			find: 	function(i){
-				return this.testSubString(i, 'endif');
+				return this.testKeyWord(i, 'endif');
 			},
 			do: 	function(){
 				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('endif'))
@@ -191,11 +185,12 @@
 
 				if(this.vars.tag != false)
 				{
-					this.struct.append(new Horns.node.instruction(this.vars.tag.safe, this));
+					console.dir('append?');
+
 				}
 				this.struct.symbol(spl);
 			},
-			syn: 	{'ic':true,'icu':true,'sym': true, 'sp':true}
+			syn: 	{'ic':true,'icu':true,'sym':true,'sp':true}
 		}// introduce allowed characters here
 	};
 	p.atomList = []; // a list of atoms symbolic codes
@@ -214,14 +209,32 @@
 			}
 		}
 	};
-	p.lastAtom = function(at)
+	p.lastAtom = function(found)
 	{
+		if(typeof found == 'undefined')
+		{
+			if(!this.vars.tag.atoms.length)
+			{
+				return null;
+			}
+
+			return this.vars.tag.atoms[this.vars.tag.atoms.length - 1];
+		}
+		else if(found !== null && found !== false && found.atom !== false)
+		{
+			if(this.vars.tag === false) // we must be just left the tag
+			{
+				return;
+			}
+
+			if(found.atom != 'sp') // space is useless, just skip
+			{
+				this.vars.tag.atoms.push(found);
+			}
+		}
 	};
 	p.detectAtom = function(i)
 	{
-		var ctx = this.vars.ctx;
-		var at = this.vars.at;
-		var expect = null;
 		var found = false;
 		var all = this.inTag() ? this.atomList : ['iou', 'io'];
 
@@ -241,43 +254,37 @@
 			}
 		}
 
+		var result = {
+			atom: false, // no atoms found
+			value: null,
+			offset: 1 // increase offset by 1
+		};
+
 		if(found === false) // nothing were found
 		{
 			if(this.inTag())
 			{
-				this.showError('Unexpected "'+this.str[i]+'"');
-			}
-			else
-			{
-				return {
-					atom: false, // no atoms found
-					offset: 1 // increase offset by 1
-				};
+				this.showError('Unexpected "'+this.str[i]+'"'); // nowhere to go
 			}
 		}
 		else
 		{
-			console.dir('>>>>> at '+i+' found: '+all[k]+' with value '+found+' (prev:'+at+')');
-			//console.dir(at);
-
-			// check if it was expected
-			if(!this.isExpectable(all[k], at))
-			{
-				this.showError('Unexpected "'+all[k]+'" by '+at);
-			}
-
-			if(all[k] != 'sp') // save atom just found for the next iteration
-			{
-				this.vars.tag.atoms.push(all[k]);
-				this.vars.at = all[k]; // temporal
-			}
-
-			return {
+			result = {
 				atom: 	all[k],
 				value: 	found,
 				offset: found.length // increase offset by atom value length
 			};
+
+			console.dir(result.offset+': '+result.atom+' ('+result.value+')');
+
+			// check if it was expected
+			if(!this.isExpectable(result))
+			{
+				this.showError('Unexpected "'+result.atom+'"');
+			}
 		}
+
+		return result;
 	};
 	p.showError = function(message, i)
 	{
@@ -328,6 +335,7 @@
 				{
 					// do atoms action
 					this.evalAtom(next);
+					this.lastAtom(next); // save atom just found
 				}
 				else
 				{
@@ -357,7 +365,17 @@
 	{
 		if(typeof sw != 'undefined')
 		{
+			if(!sw)
+			{
+				console.dir('-------------------------------');
+			}
+
 			this.vars.tag = sw ? {safe: safe, atoms: []} : false;
+
+			if(sw)
+			{
+				this.struct.append(new Horns.node.instruction(this.vars.tag.safe, this)); // add new instruction to the struct
+			}
 		}
 		else
 		{
@@ -408,14 +426,28 @@
 
 		return inst;
 	};
-	p.isExpectable = function(atom, afterAtom)
+	p.testKeyWord = function(i, word)
 	{
-		if(afterAtom == null)
+		return this.testSequence(i, word+'(\\s+|\}\}|\$)') ? word : false;
+	};
+	p.isExpectable = function(found)
+	{
+		if(!this.inTag())
 		{
 			return true;
 		}
-
-		return typeof this.atoms[afterAtom].syn[atom] != 'undefined';
+		else
+		{
+			var lastAtom = this.lastAtom();
+			if(lastAtom == null) // first atom in the tag
+			{
+				return true;
+			}
+			else
+			{
+				return typeof this.atoms[lastAtom.atom].syn[found.atom] != 'undefined';
+			}
+		}
 	};
 	p.evalSymbol = function(sym, obj)
 	{
