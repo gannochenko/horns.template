@@ -183,11 +183,6 @@
 					offs += spl[k].length + 1;
 				}
 
-				if(this.vars.tag != false)
-				{
-					console.dir('append?');
-
-				}
 				this.struct.symbol(spl);
 			},
 			syn: 	{'ic':true,'icu':true,'sym':true,'sp':true}
@@ -319,7 +314,7 @@
 			var next = null;
 			while(true)
 			{
-				if(this.vars.i >= this.str.length - 1)
+				if(this.vars.i > this.str.length - 1)
 				{
 					this.saveTextChunk();
 					return this.struct; // parse end

@@ -11,12 +11,12 @@
             var tests = [
 
                 {
-                    template:
-                    "   Это тестовый {{   TEMPL.ATE}} {{	iftestHelper }} и {{#if oneHelper one.Helper.Value}} по условию {{elseif anotherHelper}} по {{#if hz hzVal}}другому{{else}}этому{{/if}} условию {{ else }} иначе ... {{endif}} после условия {{{  unescaped }}}",
+                    template: "   Вступив в бой с {{animalAdj animal.bad}} {{  animal.bad  }} — {{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}} {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}, {{if hasWeapon}}(из оружия было: {{weapon.name}} ({{weapon.slot.type}} {{weapon.slot.name}})){{endif}}— {{animalAdjGood}} {{animal.good}} {{whatGoodAnimalDid}}",
                     data: {
-                        'TEMPL': {'ATE': 'шаблон'},
-                        'unescaped': 'unescaped',
-                        'one': {'Helper': {'Value':'"one.helper.value"'}}
+                        'animal': {'good': 'ежик', bad: 'мангустом и кабаном'},
+                        weapon: {name: 'монтировка', slot: {name: 'рука', type:'левая'}}
+                        //'unescaped': 'unescaped',
+                        //'one': {'Helper': {'Value':'value'}}
                     }
                 },
 
@@ -66,17 +66,94 @@
             {
                 var p = new Horns.compile(tests[k].template);
 
+                /*
                 p.registerHelper('iftestHelper', function(obj){
                     return 'результат тестового хелпера';
                 });
                 p.registerHelper('oneHelper', function(obj){
-                    return false;
+
+                    return obj == 'value';//'>'+obj+'<';
                 });
                 p.registerHelper('hz', function(obj){
                     return false;
                 });
                 p.registerHelper('anotherHelper', function(){
                     return true;
+                });
+
+
+                */
+                p.registerHelper('animalAdj', function(animal){
+
+                    if(animal == 'змеями')
+                    {
+                        return 'шипящими';
+                    }
+                    else if(animal == 'верблюдами')
+                    {
+                        return 'флегматичными';
+                    }
+                    else if(animal == 'львами')
+                    {
+                        return 'грациозными';
+                    }
+                    else
+                    {
+                        return 'неизвестными';
+                    }
+                });
+
+                p.registerHelper('animalAdjGood', function(){
+                   if(this.animal.good == 'ежик')
+                   {
+                       return ['маленький', 'цепкий', 'храбрый'].join(', ');
+                   }
+                   else if(this.animal.good == 'слон')
+                   {
+                       return 'хитрый';
+                   }
+                });
+
+                p.registerHelper('animalIsSnake', function(){
+                    return this.animal.bad == 'змеями';
+                });
+
+                p.registerHelper('animalIsLion', function(){
+                    return this.animal.bad == 'львами';
+                });
+
+                p.registerHelper('animalIsFromLionKing', function(){
+                    return this.animal.bad == 'львами' || this.animal.bad == 'мангустом и кабаном';
+                });
+
+                p.registerHelper('hasWeapon', function(){
+                    return this.weapon != undefined;
+                });
+
+                p.registerHelper('whatGoodAnimalDid', function(){
+                    if(this.animal.good = 'ёжиек')
+                    {
+                        if(this.animal.bad == 'змеями')
+                        {
+                            return 'чуть не съел их';
+                        }
+                        else if(this.animal.bad == 'львами')
+                        {
+                            return 'поспешно свалил от них';
+                        }
+                        else
+                        {
+                            return 'возможно, огреб от них по полной';
+                        }
+                    }
+                    else if(this.animal.good = 'слон')
+                    {
+                        return 'растоптал их';
+                    }
+                    else
+                    {
+                        return 'вышел покурить';
+                    }
                 });
 
                 console.dir(p.get(tests[k].data));
