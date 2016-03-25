@@ -82,7 +82,6 @@
 			},
 			syn: {'io':true,'iou':true,'sp':true},
 		},
-		// instruction close }}
 		ic: {
 			find: function(i){
 				return this.testSubString(i, '}}');
@@ -120,7 +119,7 @@
 			},
 			do: function()
 			{
-				if(this.lastAtom().atom == 'slash')
+				if(this.lastAtom() !== null && this.lastAtom().atom == 'slash')
 				{
 					this.atoms.endif.do.apply(this); // "\if" is treated as "endif"
 				}
@@ -131,7 +130,7 @@
 			},
 			syn: {'ic':true, 'sym':true,'sp':true},
 		},
-		'elseif': {
+		elseif: {
 			find: function(i){
 				return this.testKeyWord(i, 'elseif');
 			},
@@ -191,7 +190,26 @@
 					offs += spl[k].length + 1;
 				}
 
-				this.struct.symbol(spl);
+				if(this.lastAtom() === null)
+				{
+					this.struct.append(new Horns.node.instruction(this.vars.tag.safe, this)); // add new instruction to the struct
+					this.struct.symbol(spl);
+				}
+				else if(this.lastAtom().atom == 'hash')
+				{
+					var node = new Horns.node.instruction.lless(this);
+					node.symbol(spl);
+
+					this.struct.forward(node);
+				}
+				else if(this.lastAtom().atom == 'slash')
+				{
+					if(!this.struct.isExpectable(value))
+					{
+						this.showError('Unexpected "'+value+'"');
+					}
+					this.struct.backward();
+				}
 			},
 			syn: {'ic':true,'icu':true,'sym':true,'sp':true}
 		}// introduce allowed characters here
@@ -230,7 +248,8 @@
 				return;
 			}
 
-			if(found.atom != 'sp') // space is useless, just skip
+			// spaces and brackets are useless, just skip
+			if(found.atom != 'sp' && found.atom != 'io' && found.atom != 'ic' && found.atom != 'iou' && found.atom != 'icu')
 			{
 				this.vars.tag.atoms.push(found);
 			}
@@ -375,11 +394,6 @@
 			}
 
 			this.vars.tag = sw ? {safe: safe, atoms: []} : false;
-
-			if(sw)
-			{
-				this.struct.append(new Horns.node.instruction(this.vars.tag.safe, this)); // add new instruction to the struct
-			}
 		}
 		else
 		{
@@ -505,8 +519,7 @@
 		return this.vars.helpers[hName].apply(obj, hArgs);
 	};
 
-	// struct object
-
+	// struct
 	Horns.Struct = function()
 	{
 		this.current = new Horns.node.instruction();
@@ -549,8 +562,19 @@
 	Horns.Struct.prototype.atoms = function(atom)
 	{
 		return this.current.atoms(atom);
-	}
+	};
+	Horns.Struct.evalInstructionSet = function(iSet, ctx)
+	{
+		var value = '';
+		for(var k = 0; k < iSet.length; k++)
+		{
+			value += iSet[k].eval(ctx);
+		}
 
+		return value;
+	};
+
+	// helper
 	Horns.func = function(arg, name)
 	{
 		this.name = typeof name == 'undefined' ? 'pseudo' : name;
@@ -577,27 +601,32 @@
 		this.args.push(symbol);
 	}
 
-	// types of node
+	// node types
 
 	Horns.node = {};
 
+	/////////////////////////////////////////
 	// text node
 	Horns.node.static = function(val){
 		this.value = val;
-	}
+	};
 	var nsp = Horns.node.static.prototype;
 	nsp.eval = function(){
 		return this.value;
-	}
+	};
 	nsp.append = function(){
-	}
+	};
 	nsp.symbol = function(){
-	}
+	};
 	nsp.get = function(i){
-	}
+	};
 	nsp.atoms = function(i){
-	}
+	};
+	nsp.isExpectable = function(symbol){
+		return true;
+	};
 
+	/////////////////////////////////////////
 	// instruction node
 	Horns.node.instruction = function(escape, parser){
 		this.escape = !!escape;
@@ -637,17 +666,95 @@
 		{
 			this.sym.addArg(symbol);
 		}
-	}
+	};
 	nip.get = function(i){
 		if(typeof i == 'undefined')
 		{
 			i = this.ch.length - 1;
 		}
 		return this.ch[i];
-	}
+	};
 	nip.atoms = function(i){
-	}
+	};
+	nip.isExpectable = function(symbol){
+		return true;
+	};
 
+	/////////////////////////////////////////
+	// logic less node
+	Horns.node.instruction.lless = function(parser){
+		this.branch = {
+			cond: null,
+			ch: []
+		};
+		this.sym = false;
+		this.parser = parser;
+	}
+	var nilp = Horns.node.instruction.lless.prototype;
+	nilp.eval = function(obj)
+	{
+		var objValue = this.parser.callHelper(this.branch.cond, obj);
+		var value = '';
+		if(objValue)
+		{
+			if(typeof objValue == 'string')
+			{
+				value += Horns.Struct.evalInstructionSet(this.branch.ch, obj);
+			}
+			else if(objValue.toString() == '[object Object]') // plain object
+			{
+				if('length' in objValue && objValue.length > 0 && typeof objValue[0] != 'undefined') // object supports iteration
+				{
+					for(var j = 0; j < objValue.length; j++)
+					{
+						value += Horns.Struct.evalInstructionSet(this.branch.ch, objValue[j]);
+					}
+				}
+				else
+				{
+					value += Horns.Struct.evalInstructionSet(this.branch.ch, objValue);
+				}
+			}
+			else if(Object.prototype.toString.call(objValue) == '[object Array]') // array
+			{
+				for(var j = 0; j < objValue.length; j++)
+				{
+					value += Horns.Struct.evalInstructionSet(this.branch.ch, objValue[j]);
+				}
+			}
+		}
+
+		return value;
+	};
+	nilp.append = function(node){
+		this.branch.ch.push(node);
+	};
+	nilp.symbol = function(symbol){
+		if(this.branch.cond == null)
+		{
+			this.sym = symbol;
+			this.branch.cond = new Horns.func(symbol);
+		}
+		else
+		{
+			this.parser.showError('Unexpected symbol "'+symbol+'"');
+		}
+	};
+	nilp.isExpectable = function(symbol){
+		return this.sym == symbol;
+	};
+	nilp.get = function(i){
+		if(this.branch.ch.length == 0)
+		{
+			return this;
+		}
+		else
+		{
+			return this.branch.ch[this.branch.ch.length - 1];
+		}
+	};
+
+	/////////////////////////////////////////
 	// if node
 	Horns.node.instruction.ifelse = function(parser){
 		this.branches = [];
@@ -655,7 +762,7 @@
 		this.metElse = false;
 
 		this.parser = parser;
-	}
+	};
 	var niip = Horns.node.instruction.ifelse.prototype;
 	niip.eval = function(obj)
 	{
@@ -672,18 +779,18 @@
 				res = this.parser.callHelper(br.cond, obj);
 			}
 
+			var value = '';
+
 			if(res)
 			{
-				var value = '';
-
 				// call sub instructions
 				for(var k = 0; k < br.ch.length; k++)
 				{
 					value += br.ch[k].eval(obj);
 				}
-
-				return value;
 			}
+
+			return value;
 		}
 	}
 	niip.append = function(node){
@@ -723,7 +830,7 @@
 		{
 			return br.ch[br.ch.length - 1];
 		}
-	}
+	};
 	niip.isExpectable = function(atom)
 	{
 		if(atom == 'endif')

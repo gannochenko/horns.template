@@ -11,6 +11,8 @@
             var tests = [
 
                 {
+                    //template: " до {{#howEntered}} внутри {{/howEntered}} после {{#animal}} {{good}} vs {{bad}} {{/animal}}, получено ранений: {{#injures}} {{name}}{{#severity}} (тяжесть: {{severity}}){{/severity}}, {{/injures}}",
+                    //template: " до {{field}}  {{#if test}} внутри {{/if}} после ",
                     template: "   Вступив в бой{{#howEntered}} ({{howEntered}}){{/howEntered}} с {{animalAdj animal.bad}} {{  animal.bad  }} — {{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}} {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}, {{if hasWeapon}}(из оружия было: {{weapon.name}} ({{weapon.slot.type}} {{weapon.slot.name}})){{endif}}— {{animalAdjGood}} {{animal.good}} {{whatGoodAnimalDid}}. Получено ранений: {{#injures}} {{name}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}}",
                     data: {
                         'animal': {'good': 'ежик', bad: 'мангустом и кабаном'},
@@ -24,7 +26,7 @@
                         //'unescaped': 'unescaped',
                         //'one': {'Helper': {'Value':'value'}}
                     }
-                },
+                }
             ];
 
             Horns.debug(true);
