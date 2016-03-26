@@ -653,7 +653,7 @@
 		this.ch = [];
 
 		this.parser = parser;
-	}
+	};
 	var nip = Horns.node.instruction.prototype;
 	nip.eval = function(obj)
 	{
@@ -672,10 +672,10 @@
 		}
 
 		return value;
-	}
+	};
 	nip.append = function(node){
 		this.ch.push(node);
-	}
+	};
 	nip.symbol = function(symbol){
 		if(this.sym == null)
 		{
@@ -708,7 +708,7 @@
 		};
 		this.sym = false;
 		this.parser = parser;
-	}
+	};
 	var nilp = Horns.node.instruction.lless.prototype;
 	nilp.eval = function(obj)
 	{
@@ -837,6 +837,8 @@
 	var niip = Horns.node.instruction.ifelse.prototype;
 	niip.eval = function(obj)
 	{
+		var value = '';
+
 		for(var k = 0; k < this.branches.length; k++)
 		{
 			var br = this.branches[k];
@@ -850,8 +852,6 @@
 				res = this.parser.callHelper(br.cond, obj);
 			}
 
-			var value = '';
-
 			if(res)
 			{
 				// call sub instructions
@@ -859,10 +859,12 @@
 				{
 					value += br.ch[k].eval(obj);
 				}
-			}
 
-			return value;
+				break;
+			}
 		}
+
+		return value;
 	}
 	niip.append = function(node){
 		this.getBranch().ch.push(node);
