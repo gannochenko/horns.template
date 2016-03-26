@@ -46,8 +46,10 @@
 		this.debugMode = flag;
 	};
 
-	var p = Horns.prototype;
-	p.atoms = {
+	var proto;
+
+	proto = Horns.prototype;
+	proto.atoms = {
 		sp: {
 			find: function(i){
 				return this.testSequence(i, '\\s');
@@ -235,13 +237,13 @@
 			syn: {'ic':true,'icu':true,'sym':true,'sp':true}
 		}// introduce allowed characters here
 	};
-	p.atomList = []; // a list of atoms symbolic codes
-	for(var k in p.atoms)
+	proto.atomList = []; // a list of atoms symbolic codes
+	for(var k in proto.atoms)
 	{
-		p.atomList.push(k);
+		proto.atomList.push(k);
 	}
 
-	p.walk = function(i, cb)
+	proto.walk = function(i, cb)
 	{
 		for(var k = i; k < this.str.length; k++)
 		{
@@ -251,7 +253,7 @@
 			}
 		}
 	};
-	p.lastAtom = function(found)
+	proto.lastAtom = function(found)
 	{
 		if(typeof found == 'undefined')
 		{
@@ -276,7 +278,7 @@
 			}
 		}
 	};
-	p.detectAtom = function(i)
+	proto.detectAtom = function(i)
 	{
 		var found = false;
 		var all = this.inTag() ? this.atomList : ['iou', 'io'];
@@ -330,7 +332,7 @@
 
 		return result;
 	};
-	p.showError = function(message, i)
+	proto.showError = function(message, i)
 	{
 		if(typeof i == 'undefined')
 		{
@@ -350,11 +352,11 @@
 
 		throw new Error('Parse error at '+i+': '+message+"\r\n"+chunk+"\r\n"+cap);
 	};
-	p.getStruct = function()
+	proto.getStruct = function()
 	{
 		return this.struct;
 	};
-	p.buildStruct = function()
+	proto.buildStruct = function()
 	{
 		if(this.str.length)
 		{
@@ -394,18 +396,18 @@
 			}
 		}
 	};
-	p.get = function(obj)
+	proto.get = function(obj)
 	{
 		return this.struct.tree.eval(obj);
 	};
-	p.registerHelper = function(name, cb)
+	proto.registerHelper = function(name, cb)
 	{
 		if(typeof name == 'string' && name.length > 0 && typeof cb == 'function')
 		{
 			this.vars.helpers[name] = cb;
 		}
 	};
-	p.inTag = function(sw, safe)
+	proto.inTag = function(sw, safe)
 	{
 		if(typeof sw != 'undefined')
 		{
@@ -421,11 +423,11 @@
 			return this.vars.tag !== false;
 		}
 	};
-	p.evalAtom = function(found)
+	proto.evalAtom = function(found)
 	{
 		return this.atoms[found.atom].do.apply(this, [found.value, this.vars.i, found.offset]);
 	};
-	p.saveTextChunk = function()
+	proto.saveTextChunk = function()
 	{
 		if(this.vars.chunk != '')
 		{
@@ -433,12 +435,12 @@
 			this.vars.chunk = '';
 		}
 	};
-	p.appendChunk = function(i)
+	proto.appendChunk = function(i)
 	{
 		this.vars.chunk += this.str[i];
 	};
 	// test if this.str has substring that equal to str at position i
-	p.testSubString = function(i, str)
+	proto.testSubString = function(i, str)
 	{
 		if(this.str.substr(i, str.length) == str)
 		{
@@ -447,7 +449,7 @@
 		return false;
 	};
 	// test if a substring of this.str that starts from i matches a given regular expression. if match, return it
-	p.testSequence = function(i, expr)
+	proto.testSequence = function(i, expr)
 	{
 		var inst = false;
 		var r = this.str.substr(i, this.str.length - i).match(new RegExp('^('+expr+'+)'));
@@ -463,11 +465,11 @@
 
 		return inst;
 	};
-	p.testKeyWord = function(i, word)
+	proto.testKeyWord = function(i, word)
 	{
 		return this.testSequence(i, word+'(\\s+|\}\}|\$)') ? word : false;
 	};
-	p.isExpectable = function(found)
+	proto.isExpectable = function(found)
 	{
 		if(!this.inTag())
 		{
@@ -486,7 +488,7 @@
 			}
 		}
 	};
-	p.evalSymbol = function(sym, ctx)
+	proto.evalSymbol = function(sym, ctx)
 	{
 		var val = ctx;
 		for(var k = 0; k < sym.length; k++)
@@ -500,7 +502,7 @@
 
 		return val;
 	};
-	p.callHelper = function(sym, ctx)
+	proto.callHelper = function(sym, ctx)
 	{
 		var hName = '';
 		var args = sym.args;
@@ -544,28 +546,30 @@
 		this.current = new Horns.node.instruction();
 		this.tree = this.current;
 	};
-	Horns.Struct.prototype.forward = function(node)
+	proto = Horns.Struct.prototype;
+
+	proto.forward = function(node)
 	{
 		this.append(node);
 		this.current = node;
 	};
-	Horns.Struct.prototype.append = function(node)
+	proto.append = function(node)
 	{
 		node.parent = this.current;
 		this.current.append(node);
 	};
-	Horns.Struct.prototype.backward = function()
+	proto.backward = function()
 	{
 		this.current = this.current.parent;
 	};
-	Horns.Struct.prototype.symbol = function(sym)
+	proto.symbol = function(sym)
 	{
 		this.current.get().symbol(sym);
 	};
-	Horns.Struct.prototype.get = function(){
+	proto.get = function(){
 		return this.current.get();
 	};
-	Horns.Struct.prototype.isCurrent = function(type)
+	proto.isCurrent = function(type)
 	{
 		if(type == 'instruction')
 		{
@@ -574,11 +578,11 @@
 
 		return this.current instanceof Horns.node.instruction[type];
 	};
-	Horns.Struct.prototype.isExpectable = function(atom)
+	proto.isExpectable = function(atom)
 	{
 		return this.current.isExpectable(atom);
 	};
-	Horns.Struct.prototype.atoms = function(atom)
+	proto.atoms = function(atom)
 	{
 		return this.current.atoms(atom);
 	};
@@ -604,7 +608,8 @@
 			this.args.push(arg);
 		}
 	};
-	Horns.func.prototype.addArg = function(symbol)
+	proto = Horns.func.prototype;
+	proto.addArg = function(symbol)
 	{
 		if(this.name == 'pseudo' && this.args.length == 1)
 		{
@@ -629,19 +634,19 @@
 	Horns.node.static = function(val){
 		this.value = val;
 	};
-	var nsp = Horns.node.static.prototype;
-	nsp.eval = function(){
+	proto = Horns.node.static.prototype;
+	proto.eval = function(){
 		return this.value;
 	};
-	nsp.append = function(){
+	proto.append = function(){
 	};
-	nsp.symbol = function(){
+	proto.symbol = function(){
 	};
-	nsp.get = function(i){
+	proto.get = function(i){
 	};
-	nsp.atoms = function(i){
+	proto.atoms = function(i){
 	};
-	nsp.isExpectable = function(){
+	proto.isExpectable = function(){
 		return true;
 	};
 
@@ -654,8 +659,8 @@
 
 		this.parser = parser;
 	};
-	var nip = Horns.node.instruction.prototype;
-	nip.eval = function(ctx)
+	proto = Horns.node.instruction.prototype;
+	proto.eval = function(ctx)
 	{
 		// call function
 		var value = '';
@@ -673,10 +678,10 @@
 
 		return value;
 	};
-	nip.append = function(node){
+	proto.append = function(node){
 		this.ch.push(node);
 	};
-	nip.symbol = function(symbol){
+	proto.symbol = function(symbol){
 		if(this.sym == null)
 		{
 			this.sym = new Horns.func(symbol);
@@ -686,16 +691,16 @@
 			this.sym.addArg(symbol);
 		}
 	};
-	nip.get = function(i){
+	proto.get = function(i){
 		if(typeof i == 'undefined')
 		{
 			i = this.ch.length - 1;
 		}
 		return this.ch[i];
 	};
-	nip.atoms = function(i){
+	proto.atoms = function(i){
 	};
-	nip.isExpectable = function(){
+	proto.isExpectable = function(){
 		return true;
 	};
 
@@ -709,8 +714,8 @@
 		this.sym = false;
 		this.parser = parser;
 	};
-	var nilp = Horns.node.instruction.lless.prototype;
-	nilp.eval = function(ctx)
+	proto = Horns.node.instruction.lless.prototype;
+	proto.eval = function(ctx)
 	{
 		var objValue = this.parser.callHelper(this.branch.cond, ctx);
 		var value = '';
@@ -745,10 +750,10 @@
 
 		return value;
 	};
-	nilp.append = function(node){
+	proto.append = function(node){
 		this.branch.ch.push(node);
 	};
-	nilp.symbol = function(symbol){
+	proto.symbol = function(symbol){
 		if(this.branch.cond == null)
 		{
 			this.sym = symbol;
@@ -759,10 +764,10 @@
 			this.parser.showError('Unexpected symbol "'+symbol+'"');
 		}
 	};
-	nilp.isExpectable = function(symbol){
+	proto.isExpectable = function(symbol){
 		return this.sym == symbol;
 	};
-	nilp.get = function(i){
+	proto.get = function(i){
 		if(this.branch.ch.length == 0)
 		{
 			return this;
@@ -780,8 +785,8 @@
 		this.sym = false;
 		this.parser = parser;
 	};
-	var nin = Horns.node.instruction.nested.prototype;
-	nin.symbol = function(symbol){
+	proto = Horns.node.instruction.nested.prototype;
+	proto.symbol = function(symbol){
 
 		if(this.name === false)
 		{
@@ -796,7 +801,7 @@
 			this.parser.showError('Unexpected symbol "'+symbol+'"');
 		}
 	};
-	nin.eval = function(ctx)
+	proto.eval = function(ctx)
 	{
 		var value = '';
 
@@ -816,10 +821,10 @@
 
 		return value;
 	};
-	nin.get = function(){
+	proto.get = function(){
 		return this;
 	};
-	nin.isExpectable = function(){
+	proto.isExpectable = function(){
 		return true;
 	};
 
@@ -832,8 +837,8 @@
 
 		this.parser = parser;
 	};
-	var niip = Horns.node.instruction.ifelse.prototype;
-	niip.eval = function(ctx)
+	proto = Horns.node.instruction.ifelse.prototype;
+	proto.eval = function(ctx)
 	{
 		var value = '';
 
@@ -864,10 +869,10 @@
 
 		return value;
 	};
-	niip.append = function(node){
+	proto.append = function(node){
 		this.getBranch().ch.push(node);
 	};
-	niip.symbol = function(symbol){
+	proto.symbol = function(symbol){
 
 		// todo: check that no symbol can go after 'else' atoms
 
@@ -882,16 +887,16 @@
 			lastBr.cond.addArg(symbol);
 		}
 	};
-	niip.newBranch = function(){
+	proto.newBranch = function(){
 		this.branches.push({
 			cond: null,
 			ch: []
 		});
 	};
-	niip.getBranch = function(){
+	proto.getBranch = function(){
 		return this.branches[this.branches.length - 1];
 	};
-	niip.get = function(i){
+	proto.get = function(i){
 		var br = this.getBranch();
 		if(br.ch.length == 0)
 		{
@@ -902,7 +907,7 @@
 			return br.ch[br.ch.length - 1];
 		}
 	};
-	niip.isExpectable = function(atom)
+	proto.isExpectable = function(atom)
 	{
 		if(atom == 'endif')
 		{
@@ -910,7 +915,7 @@
 		}
 		return !this.metElse;
 	};
-	niip.atoms = function(atom){
+	proto.atoms = function(atom){
 		if(atom == 'elseif' || atom == 'else')
 		{
 			this.newBranch();
