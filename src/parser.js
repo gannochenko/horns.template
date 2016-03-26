@@ -1,5 +1,7 @@
 (function(){
 
+	var registry = {};
+
 	Horns = function(str)
 	{
 		if(typeof str != 'string')
@@ -29,9 +31,15 @@
 			console.dir(this.struct);
 		}
 	};
-	Horns.compile = function(str)
+	Horns.compile = function(str, name)
 	{
-		return new Horns(str);
+		var instance = new Horns(str);
+		if(typeof name == 'string' && name.length)
+		{
+			registry[name] = instance;
+		}
+
+		return instance;
 	};
 	Horns.debug = function(flag)
 	{
@@ -65,7 +73,7 @@
 				this.saveTextChunk();
 				this.inTag(true, true);
 			},
-			syn: {'hash':true,'slash':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
+			syn: {'hash':true,'slash':true,'nested':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
 		},
 		icu: {
 			find: function(i){
@@ -112,6 +120,15 @@
 			do: function(){
 			},
 			syn: {'if':true,'each':true,'sym':true,'sp':true},
+		},
+		nested: {
+			find: function(i){
+				return this.testSubString(i, '>');
+			},
+			do: function(){
+				this.struct.append(new Horns.node.instruction.nested(this));
+			},
+			syn: {'sym':true,'sp':true}
 		},
 		'if': {
 			find: function(i){
@@ -209,6 +226,10 @@
 						this.showError('Unexpected "'+value+'"');
 					}
 					this.struct.backward();
+				}
+				else
+				{
+					this.struct.symbol(spl);
 				}
 			},
 			syn: {'ic':true,'icu':true,'sym':true,'sp':true}
@@ -428,10 +449,8 @@
 	// test if a substring of this.str that starts from i matches a given regular expression. if match, return it
 	p.testSequence = function(i, expr)
 	{
-		var expr = new RegExp('^('+expr+'+)');
-
 		var inst = false;
-		var r = this.str.substr(i, this.str.length - i).match(expr);
+		var r = this.str.substr(i, this.str.length - i).match(new RegExp('^('+expr+'+)'));
 		if(r != null && typeof r[1] != 'undefined')
 		{
 			inst = r[1];
@@ -507,7 +526,7 @@
 
 		if(typeof this.vars.helpers[hName] == 'undefined')
 		{
-			throw new ReferenceError('Unknown helper "'+hName+'"');
+			return '';
 		}
 
 		var hArgs = [];
@@ -622,12 +641,12 @@
 	};
 	nsp.atoms = function(i){
 	};
-	nsp.isExpectable = function(symbol){
+	nsp.isExpectable = function(){
 		return true;
 	};
 
 	/////////////////////////////////////////
-	// instruction node
+	// instruction node (simple substitution)
 	Horns.node.instruction = function(escape, parser){
 		this.escape = !!escape;
 		this.sym = null;
@@ -676,12 +695,12 @@
 	};
 	nip.atoms = function(i){
 	};
-	nip.isExpectable = function(symbol){
+	nip.isExpectable = function(){
 		return true;
 	};
 
 	/////////////////////////////////////////
-	// logic less node
+	// logic-less node
 	Horns.node.instruction.lless = function(parser){
 		this.branch = {
 			cond: null,
@@ -752,6 +771,58 @@
 		{
 			return this.branch.ch[this.branch.ch.length - 1];
 		}
+	};
+
+	/////////////////////////////////////////
+	// nested template node
+	Horns.node.instruction.nested = function(parser){
+		this.name = false;
+		this.sym = false;
+		this.parser = parser;
+	};
+	var nin = Horns.node.instruction.nested.prototype;
+	nin.symbol = function(symbol){
+
+		if(this.name === false)
+		{
+			this.name = symbol;
+		}
+		else if(this.sym === false)
+		{
+			this.sym = new Horns.func(symbol);
+		}
+		else
+		{
+			this.parser.showError('Unexpected symbol "'+symbol+'"');
+		}
+	};
+	nin.eval = function(obj)
+	{
+		var value = '';
+
+		if(this.name !== false)
+		{
+			var template = registry[this.name];
+			if(template)
+			{
+				var ctx = obj;
+				if(this.sym !== false)
+				{
+					ctx = this.parser.callHelper(this.sym, ctx);
+				}
+
+				value = template.get(ctx);
+			}
+		}
+
+		//var objValue = this.parser.callHelper(this.branch.cond, obj);
+		return value;
+	};
+	nin.get = function(){
+		return this;
+	};
+	nin.isExpectable = function(){
+		return true;
 	};
 
 	/////////////////////////////////////////
