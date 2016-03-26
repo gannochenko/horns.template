@@ -486,9 +486,9 @@
 			}
 		}
 	};
-	p.evalSymbol = function(sym, obj)
+	p.evalSymbol = function(sym, ctx)
 	{
-		var val = obj;
+		var val = ctx;
 		for(var k = 0; k < sym.length; k++)
 		{
 			val = val[sym[k]];
@@ -500,7 +500,7 @@
 
 		return val;
 	};
-	p.callHelper = function(sym, obj)
+	p.callHelper = function(sym, ctx)
 	{
 		var hName = '';
 		var args = sym.args;
@@ -532,10 +532,10 @@
 		var hArgs = [];
 		for(var k = 0; k < args.length; k++)
 		{
-			hArgs.push(this.evalSymbol(args[k], obj));
+			hArgs.push(this.evalSymbol(args[k], ctx));
 		}
 
-		return this.vars.helpers[hName].apply(obj, hArgs);
+		return this.vars.helpers[hName].apply(ctx, hArgs);
 	};
 
 	// struct
@@ -543,28 +543,28 @@
 	{
 		this.current = new Horns.node.instruction();
 		this.tree = this.current;
-	}
+	};
 	Horns.Struct.prototype.forward = function(node)
 	{
 		this.append(node);
 		this.current = node;
-	}
+	};
 	Horns.Struct.prototype.append = function(node)
 	{
 		node.parent = this.current;
 		this.current.append(node);
-	}
+	};
 	Horns.Struct.prototype.backward = function()
 	{
 		this.current = this.current.parent;
-	}
+	};
 	Horns.Struct.prototype.symbol = function(sym)
 	{
 		this.current.get().symbol(sym);
-	}
+	};
 	Horns.Struct.prototype.get = function(){
 		return this.current.get();
-	}
+	};
 	Horns.Struct.prototype.isCurrent = function(type)
 	{
 		if(type == 'instruction')
@@ -573,11 +573,11 @@
 		}
 
 		return this.current instanceof Horns.node.instruction[type];
-	}
+	};
 	Horns.Struct.prototype.isExpectable = function(atom)
 	{
 		return this.current.isExpectable(atom);
-	}
+	};
 	Horns.Struct.prototype.atoms = function(atom)
 	{
 		return this.current.atoms(atom);
@@ -603,7 +603,7 @@
 		{
 			this.args.push(arg);
 		}
-	}
+	};
 	Horns.func.prototype.addArg = function(symbol)
 	{
 		if(this.name == 'pseudo' && this.args.length == 1)
@@ -618,7 +618,7 @@
 		}
 
 		this.args.push(symbol);
-	}
+	};
 
 	// node types
 
@@ -655,20 +655,20 @@
 		this.parser = parser;
 	};
 	var nip = Horns.node.instruction.prototype;
-	nip.eval = function(obj)
+	nip.eval = function(ctx)
 	{
 		// call function
 		var value = '';
 
 		if(this.sym !== null)
 		{
-			value = this.parser.callHelper(this.sym, obj);
+			value = this.parser.callHelper(this.sym, ctx);
 		}
 
 		// call sub instructions
 		for(var k = 0; k < this.ch.length; k++)
 		{
-			value += this.ch[k].eval(obj);
+			value += this.ch[k].eval(ctx);
 		}
 
 		return value;
@@ -710,15 +710,15 @@
 		this.parser = parser;
 	};
 	var nilp = Horns.node.instruction.lless.prototype;
-	nilp.eval = function(obj)
+	nilp.eval = function(ctx)
 	{
-		var objValue = this.parser.callHelper(this.branch.cond, obj);
+		var objValue = this.parser.callHelper(this.branch.cond, ctx);
 		var value = '';
 		if(objValue)
 		{
 			if(typeof objValue == 'string')
 			{
-				value += Horns.Struct.evalInstructionSet(this.branch.ch, obj);
+				value += Horns.Struct.evalInstructionSet(this.branch.ch, ctx);
 			}
 			else if(objValue.toString() == '[object Object]') // plain object
 			{
@@ -796,7 +796,7 @@
 			this.parser.showError('Unexpected symbol "'+symbol+'"');
 		}
 	};
-	nin.eval = function(obj)
+	nin.eval = function(ctx)
 	{
 		var value = '';
 
@@ -805,7 +805,6 @@
 			var template = registry[this.name];
 			if(template)
 			{
-				var ctx = obj;
 				if(this.sym !== false)
 				{
 					ctx = this.parser.callHelper(this.sym, ctx);
@@ -815,7 +814,6 @@
 			}
 		}
 
-		//var objValue = this.parser.callHelper(this.branch.cond, obj);
 		return value;
 	};
 	nin.get = function(){
@@ -835,7 +833,7 @@
 		this.parser = parser;
 	};
 	var niip = Horns.node.instruction.ifelse.prototype;
-	niip.eval = function(obj)
+	niip.eval = function(ctx)
 	{
 		var value = '';
 
@@ -849,7 +847,7 @@
 			}
 			else
 			{
-				res = this.parser.callHelper(br.cond, obj);
+				res = this.parser.callHelper(br.cond, ctx);
 			}
 
 			if(res)
@@ -857,7 +855,7 @@
 				// call sub instructions
 				for(var k = 0; k < br.ch.length; k++)
 				{
-					value += br.ch[k].eval(obj);
+					value += br.ch[k].eval(ctx);
 				}
 
 				break;
@@ -865,10 +863,10 @@
 		}
 
 		return value;
-	}
+	};
 	niip.append = function(node){
 		this.getBranch().ch.push(node);
-	}
+	};
 	niip.symbol = function(symbol){
 
 		// todo: check that no symbol can go after 'else' atoms
@@ -883,16 +881,16 @@
 		{
 			lastBr.cond.addArg(symbol);
 		}
-	}
+	};
 	niip.newBranch = function(){
 		this.branches.push({
 			cond: null,
 			ch: []
 		});
-	}
+	};
 	niip.getBranch = function(){
 		return this.branches[this.branches.length - 1];
-	}
+	};
 	niip.get = function(i){
 		var br = this.getBranch();
 		if(br.ch.length == 0)
@@ -911,7 +909,7 @@
 			return true;
 		}
 		return !this.metElse;
-	}
+	};
 	niip.atoms = function(atom){
 		if(atom == 'elseif' || atom == 'else')
 		{
@@ -921,6 +919,6 @@
 		{
 			this.metElse = true;
 		}
-	}
+	};
 
 }).call(this);
