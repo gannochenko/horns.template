@@ -19,8 +19,8 @@
             //template: " до {{field}}  {{#if test}} внутри {{/if}} после ",
             //template: "Получено ранений: {{#injures}} {{name}} у {{../animal.good}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}}",
             //template: "{{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}}111 {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}",
-            //template: "   Вступив в бой{{#howEntered}} ({{howEntered}}){{/howEntered}} с {{animalAdj animal.bad}} {{  animal.bad  }} — {{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}} {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}, {{if hasWeapon}}(из оружия было: {{weapon.name}} ({{weapon.slot.type}} {{weapon.slot.name}})){{endif}}— {{animalAdjGood}} {{animal.good}} {{whatGoodAnimalDid}}. Получено ранений: {{#injures}} {{name}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}} {{#after}} {{> nestedAfter}} {{/after}}",
-            /*data: {
+            template: "   Вступив в бой{{#howEntered}} ({{howEntered}}){{/howEntered}} с {{animalAdj animal.bad}} {{  animal.bad  }} — {{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}} {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}, {{if hasWeapon}}(из оружия было: {{weapon.name}} ({{weapon.slot.type}} {{weapon.slot.name}})){{endif}}— {{animalAdjGood}} {{animal.good}} {{whatGoodAnimalDid}}. Получено ранений: {{#injures}} {{name}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}} {{#after}} {{> nestedAfter}} {{/after}}",
+            data: {
              'animal': {'good': 'ежик', bad: 'мангустом и кабаном'},
              weapon: {name: 'монтировка', slot: {name: 'рука', type:'левая'}},
              howEntered: 'быстро',
@@ -33,20 +33,6 @@
              //'unescaped': 'unescaped',
              //'one': {'Helper': {'Value':'value'}}
              }
-             */
-            template: " список: <ul> {{#inner}} <li> <ul> {{#innerSub}} <li> {{../../innerWhat.name}} \"{{name}}\" </li> {{/innerSub}} </ul> </li> {{/inner}} </ul>",
-            data: {
-                what: 'список',
-                innerWhat: {name: 'элемент'},
-                inner: [
-                    {innerSub: [
-                        {name: '1-1'}, {name: '1-2'}
-                    ]},
-                    {innerSub: [
-                        {name: '2-1'}, {name: '2-2'}
-                    ]}
-                ]
-            }
         }
     ];
 
