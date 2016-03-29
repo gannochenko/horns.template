@@ -1,5 +1,1 @@
-*
-
-!src/
-!doc/
-!.gitignore
+.idea/*

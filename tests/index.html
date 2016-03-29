@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<script src="../src/js/horns.js"></script>
+<script>
+
+    //var nestedTemplate = ' (а потом он {{action}} как {{like}})';
+    //new Horns.compile(nestedTemplate, 'nestedAfter');
+
+    var tests = [
+
+        {
+            //template: " до {{#howEntered}} внутри {{/howEntered}} после {{#animal}} {{good}} vs {{bad}} {{/animal}}, получено ранений: {{#injures}} {{name}}{{#severity}} (тяжесть: {{severity}}){{/severity}}, {{/injures}}",
+            //template: " до {{field}}  {{#if test}} внутри {{/if}} после ",
+            //template: "Получено ранений: {{#injures}} {{name}} у {{../animal.good}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}}",
+            //template: "{{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}}111 {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}",
+            //template: "   Вступив в бой{{#howEntered}} ({{howEntered}}){{/howEntered}} с {{animalAdj animal.bad}} {{  animal.bad  }} — {{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}} {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}, {{if hasWeapon}}(из оружия было: {{weapon.name}} ({{weapon.slot.type}} {{weapon.slot.name}})){{endif}}— {{animalAdjGood}} {{animal.good}} {{whatGoodAnimalDid}}. Получено ранений: {{#injures}} {{name}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}} {{#after}} {{> nestedAfter}} {{/after}}",
+            /*data: {
+             'animal': {'good': 'ежик', bad: 'мангустом и кабаном'},
+             weapon: {name: 'монтировка', slot: {name: 'рука', type:'левая'}},
+             howEntered: 'быстро',
+             injures: [
+             {name: 'рваная рана руки'},
+             {name: 'порез сосков', severity: 'низкая'},
+             {name: 'синяк на яичке', severity: 'высочайшая'},
+             ],
+             after: {action: 'бежал', like: 'олень'}
+             //'unescaped': 'unescaped',
+             //'one': {'Helper': {'Value':'value'}}
+             }
+             */
+            template: " список: <ul> {{#inner}} <li> <ul> {{#innerSub}} <li> {{../../innerWhat.name}} \"{{name}}\" </li> {{/innerSub}} </ul> </li> {{/inner}} </ul>",
+            data: {
+                what: 'список',
+                innerWhat: {name: 'элемент'},
+                inner: [
+                    {innerSub: [
+                        {name: '1-1'}, {name: '1-2'}
+                    ]},
+                    {innerSub: [
+                        {name: '2-1'}, {name: '2-2'}
+                    ]}
+                ]
+            }
+        }
+    ];
+
+    Horns.debug(true);
+
+    for(var k in tests)
+    {
+        var p = new Horns.compile(tests[k].template);
+
+        p.registerHelper('animalAdj', function(animal){
+
+            if(animal == 'змеями')
+            {
+                return 'шипящими';
+            }
+            else if(animal == 'верблюдами')
+            {
+                return 'флегматичными';
+            }
+            else if(animal == 'львами')
+            {
+                return 'грациозными';
+            }
+            else
+            {
+                return 'неизвестными';
+            }
+        });
+
+        p.registerHelper('animalAdjGood', function(){
+            if(this.animal.good == 'ежик')
+            {
+                return ['маленький', 'цепкий', 'храбрый'].join(', ');
+            }
+            else if(this.animal.good == 'слон')
+            {
+                return 'хитрый';
+            }
+        });
+
+        p.registerHelper('animalIsSnake', function(){
+            return this.animal.bad == 'змеями';
+        });
+
+        p.registerHelper('animalIsLion', function(){
+            return this.animal.bad == 'львами';
+        });
+
+        p.registerHelper('animalIsFromLionKing', function(){
+            return this.animal.bad == 'львами' || this.animal.bad == 'мангустом и кабаном';
+        });
+
+        p.registerHelper('hasWeapon', function(){
+            return this.weapon != undefined;
+        });
+
+        p.registerHelper('whatGoodAnimalDid', function(){
+            if(this.animal.good = 'ёжиек')
+            {
+                if(this.animal.bad == 'змеями')
+                {
+                    return 'чуть не съел их';
+                }
+                else if(this.animal.bad == 'львами')
+                {
+                    return 'поспешно свалил от них';
+                }
+                else
+                {
+                    return 'возможно, огреб от них по полной';
+                }
+            }
+            else if(this.animal.good = 'слон')
+            {
+                return 'растоптал их';
+            }
+            else
+            {
+                return 'вышел покурить';
+            }
+        });
+
+        var html = p.get(tests[k].data);
+
+        console.dir(html);
+        document.write(html);
+    }
+
+</script>
+
+
+</body>
+</html>
