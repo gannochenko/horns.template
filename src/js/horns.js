@@ -535,23 +535,27 @@
 	Horns.symbol = function(value, parser)
 	{
 		this.parser = parser;
-		this.value = value.toString();
+		this.value = value.toString().trim();
 
 		var found = this.value.match(new RegExp('^'+Horns.getRegExp()));
 		found = Array.prototype.slice.call(found);
 
-		console.dir(found);
-		return;
+		this.path = found.pop(); // get symbol name
 
-		found.shift();
-
-		this.path = found.pop();
+		// calc count of "../"
 		this.back = 0;
-		for(var k = 0; k < found.length; k++)
+		var k, sub;
+		for(k = 0; k < value.length;)
 		{
-			if(typeof found[k] != 'undefined')
+			sub = value.substr(k, 3);
+			k += 3;
+			if(sub == '../')
 			{
 				this.back++;
+			}
+			else
+			{
+				break;
 			}
 		}
 
@@ -565,8 +569,8 @@
 	proto = Horns.symbol.prototype;
 	proto.isSimple = function()
 	{
-		return this.parentOffs == 0 && this.path.length == 1;
-	}
+		return this.back == 0 && this.path.length == 1;
+	};
 	proto.absolutizePath = function(base)
 	{
 		var result = this.parseSeqence(base);
@@ -628,12 +632,12 @@
 	proto.getValue = function()
 	{
 		return this.value;
-	}
+	};
 
 	// function
-	Horns.fnCall = function(arg, name, parser)
+	Horns.fnCall = function(arg, parser)
 	{
-		this.name = name ? 'pseudo' : name;
+		this.name = 'pseudo';
 		this.args = [];
 		this.parser = parser;
 
@@ -645,14 +649,17 @@
 	proto = Horns.fnCall.prototype;
 	proto.addArg = function(symbol)
 	{
-		if(this.name == 'pseudo' && this.args.length == 1)
+		if(this.args.length == 1)
 		{
-			if(!symbol.isSimple())
+			if(!this.args[0].isSimple())
 			{
-				throw new ReferenceError('"'+symbol.getValue()+'" is not a valid function name');
+				throw new ReferenceError('"'+this.args[0].getValue()+'" is not a valid function name');
+			}
+			else
+			{
+				this.name = this.args[0].getValue();
 			}
 
-			this.name = this.args[0][0];
 			this.args = [];
 		}
 
@@ -812,7 +819,7 @@
 	proto.symbol = function(symbol){
 		if(this.sym == null)
 		{
-			this.sym = new Horns.fnCall(symbol);
+			this.sym = new Horns.fnCall(symbol, this.parser);
 		}
 		else
 		{
@@ -885,7 +892,7 @@
 		if(this.branch.cond == null)
 		{
 			this.sym = symbol;
-			this.branch.cond = new Horns.fnCall(symbol);
+			this.branch.cond = new Horns.fnCall(symbol, this.parser);
 		}
 		else
 		{
@@ -893,7 +900,6 @@
 		}
 	};
 	proto.isExpectable = function(symbol){
-		console.dir(symbol);
 		return this.sym.getValue() == symbol.getValue();
 	};
 	proto.get = function(i){
@@ -923,7 +929,7 @@
 		}
 		else if(this.sym === false)
 		{
-			this.sym = new Horns.fnCall(symbol);
+			this.sym = new Horns.fnCall(symbol, this.parser);
 		}
 		else
 		{
@@ -1009,7 +1015,7 @@
 
 		if(lastBr.cond == null)
 		{
-			lastBr.cond = new Horns.fnCall(symbol);
+			lastBr.cond = new Horns.fnCall(symbol, this.parser);
 		}
 		else
 		{
