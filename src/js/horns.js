@@ -387,7 +387,9 @@
 	};
 	proto.get = function(obj)
 	{
-		return this.struct.tree.eval(obj);
+		console.dir(this.struct);
+
+		return this.struct.tree.eval([], obj);
 	};
 	proto.registerHelper = function(name, cb)
 	{
@@ -493,43 +495,6 @@
 
 		return val;
 	};
-	proto.callHelper = function(sym, ctx)
-	{
-		var hName = '';
-		var args = sym.args;
-
-		if(sym.name == 'pseudo' && sym.args.length == 1)
-		{
-			// special case: test if argument is a function name
-			var arg = sym.args[0];
-			if(arg.length == 1 && typeof this.vars.helpers[arg[0]] != 'undefined')
-			{
-				hName = arg[0];
-				args = [];
-			}
-			else
-			{
-				hName = 'pseudo';
-			}
-		}
-		else
-		{
-			hName = sym.name;
-		}
-
-		if(typeof this.vars.helpers[hName] == 'undefined')
-		{
-			return '';
-		}
-
-		var hArgs = [];
-		for(var k = 0; k < args.length; k++)
-		{
-			hArgs.push(this.evalSymbol(args[k], ctx));
-		}
-
-		return this.vars.helpers[hName].apply(ctx, hArgs);
-	};
 
 	// symbol
 	Horns.symbol = function(value, parser)
@@ -573,13 +538,13 @@
 	};
 	proto.absolutizePath = function(base)
 	{
-		var result = this.parseSeqence(base);
 		var k = 0;
+		var result = Util.clone(base);
 
 		// resolve "../" symbols relative to base
 		if(result.length && this.back)
 		{
-			for(k = 0; k < this.back.length; k++)
+			for(k = 0; k < this.back; k++)
 			{
 				result.pop();
 				if(!result.length)
@@ -613,21 +578,11 @@
 
 		return sq;
 	};
-	proto.evalAt = function(data, at)
+	proto.eval = function(ctx, data)
 	{
-		var path = this.absolutizePath(at);
+		var path = this.absolutizePath(ctx);
 
-		var val = data;
-		for(var k = 0; k < path.length; k++)
-		{
-			val = val[path[k]];
-			if(typeof val == 'undefined' || val === null)
-			{
-				return '';
-			}
-		}
-
-		return val;
+		return Util.getObjField(path, data);
 	};
 	proto.getValue = function()
 	{
@@ -665,42 +620,24 @@
 
 		this.args.push(symbol);
 	};
-	proto.eval = function(ctx)
+	proto.eval = function(ctx, data)
 	{
 		var hName = '';
 		var args = this.args;
 
-		if(this.name == 'pseudo' && this.args.length == 1)
-		{
-			// special case: test if argument is a function name
-			var arg = this.args[0];
-			if(arg.length == 1 && typeof this.parser.vars.helpers[arg[0]] != 'undefined')
-			{
-				hName = arg[0];
-				args = [];
-			}
-			else
-			{
-				hName = 'pseudo';
-			}
-		}
-		else
-		{
-			hName = this.name;
-		}
-
-		if(typeof this.parser.vars.helpers[hName] == 'undefined')
+		if(typeof this.parser.vars.helpers[this.name] == 'undefined')
 		{
 			return '';
 		}
 
 		var hArgs = [];
-		for(var k = 0; k < args.length; k++)
+		for(var k = 0; k < this.args.length; k++)
 		{
-			hArgs.push(this.parser.evalSymbol(args[k], ctx));
+			hArgs.push(this.args[k].eval(ctx, data));
 		}
 
-		return this.parser.vars.helpers[hName].apply(ctx, hArgs);
+		var result = this.parser.vars.helpers[this.name].apply(Util.getObjField(ctx, data), hArgs);
+		return Util.isFalsie(result) ? '' : result.toString();
 	};
 
 	// structure
@@ -795,20 +732,20 @@
 		this.parser = parser;
 	};
 	proto = Horns.node.instruction.prototype;
-	proto.eval = function(ctx)
+	proto.eval = function(ctx, data)
 	{
 		// call function
 		var value = '';
 
 		if(this.sym !== null)
 		{
-			value = this.parser.callHelper(this.sym, ctx);
+			value = this.sym.eval(ctx, data);
 		}
 
 		// call sub instructions
 		for(var k = 0; k < this.ch.length; k++)
 		{
-			value += this.ch[k].eval(ctx);
+			value += this.ch[k].eval(ctx, data);
 		}
 
 		return value;
@@ -852,7 +789,8 @@
 	proto = Horns.node.instruction.lless.prototype;
 	proto.eval = function(ctx)
 	{
-		var objValue = this.parser.callHelper(this.branch.cond, ctx);
+		//var objValue = this.parser.callHelper(this.branch.cond, ctx);
+		var objValue = this.branch.cond.eval(ctx);
 		var value = '';
 		if(objValue)
 		{
@@ -947,7 +885,8 @@
 			{
 				if(this.sym !== false)
 				{
-					ctx = this.parser.callHelper(this.sym, ctx);
+					//ctx = this.parser.callHelper(this.sym, ctx);
+					ctx = this.sym.eval(ctx);
 				}
 
 				value = template.get(ctx);
@@ -987,7 +926,8 @@
 			}
 			else
 			{
-				res = this.parser.callHelper(br.cond, ctx);
+				//res = this.parser.callHelper(br.cond, ctx);
+				res = bt.cond.eval(ctx);
 			}
 
 			if(res)
@@ -1060,5 +1000,65 @@
 			this.metElse = true;
 		}
 	};
+
+	Util = {
+		type: {
+			isArray: function(obj){
+				return Object.prototype.toString.call(obj) == '[object Array]'
+			},
+			isPlainObject: function(obj){
+				return Object.prototype.toString.call(obj) == '[object Object]';
+			},
+		},
+		isFalsie: function(arg)
+		{
+			return typeof arg == 'undefined' || arg === null || arg === false;
+		},
+		getObjField: function(path, data)
+		{
+			var val = data;
+			for(var k = 0; k < path.length; k++)
+			{
+				val = val[path[k]];
+				if(typeof val == 'undefined' || val === null)
+				{
+					return '';
+				}
+			}
+
+			return val;
+		},
+		clone: function(arg)
+		{
+			var result = null;
+			var k = 0;
+
+			if(Util.type.isArray(arg))
+			{
+				result = [];
+				for(k = 0; k < arg.length; k++)
+				{
+					result[k] = Util.clone(arg[k]);
+				}
+			}
+			else if(Util.type.isPlainObject(arg))
+			{
+				result = {};
+				for(k in arg)
+				{
+					if(arg.hasOwnProperty(k))
+					{
+						result[k] = Util.clone(arg[k]);
+					}
+				}
+			}
+			else
+			{
+				result = arg;
+			}
+
+			return result;
+		},
+	}
 
 }).call(this);
