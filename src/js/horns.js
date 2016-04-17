@@ -705,60 +705,65 @@
 	/////////////////////////////////////////
 	// logic-less node: {{#inner}} {{...}} {{/inner}}
 	NodeType.Instruction.LogicLess = function(parser){
-		this.branch = {
-			cond: null,
-			ch: []
-		};
-		this.sym = false;
-		this.parser = parser;
+		this.sub = []; // sub-instruction set
+		this.condition = null; // conditional function call, it always will be pseudo FnCall
+		this.conditionalSymbol = false; // instruction symbol, i.e. when {{#inner}} met it will be "inner"
+		this.parser = parser; // link to horns object
 	};
 	proto = NodeType.Instruction.LogicLess.prototype;
 	proto.eval = function(ctx, data)
 	{
-		var objValue = this.branch.cond.eval(ctx, data);
+		// calc logic less condition
+		var result = this.condition.eval(ctx, data);
+		// helper may return the following:
+		// 1) iterable object or array. then instruction acts as each
+		// 2) other stuff. then act as conditional operator, check if stuff is not falsie and enter\skip sub-instructions
+
 		console.dir(ctx);
-		console.dir('objValue');
-		console.dir(objValue);
+		console.dir('result');
+		console.dir(result);
 		var value = '';
-		if(objValue)
+		if(result)
 		{
-			if(typeof objValue == 'string')
+			var j = null;
+
+			if(Util.type.isPlainObject(result)) // plain object
 			{
-				value += Structure.evalInstructionSet(this.branch.ch, data);
-			}
-			else if(Util.type.isPlainObject(objValue)) // plain object
-			{
-				if('length' in objValue && objValue.length > 0 && typeof objValue[0] != 'undefined') // object supports iteration
+				if(Util.type.isIterableObject(result)) // object supports iteration
 				{
-					for(var j = 0; j < objValue.length; j++)
+					for(j = 0; j < result.length; j++)
 					{
-						value += Structure.evalInstructionSet(this.branch.ch, objValue[j]);
+						value += Structure.evalInstructionSet(this.sub, result[j]);
 					}
 				}
 				else
 				{
-					value += Structure.evalInstructionSet(this.branch.ch, objValue);
+					value += Structure.evalInstructionSet(this.sub, result);
 				}
 			}
-			else if(Util.type.isArray(objValue)) // array
+			else if(Util.type.isArray(result)) // array
 			{
-				for(var j = 0; j < objValue.length; j++)
+				for(j = 0; j < result.length; j++)
 				{
-					value += Structure.evalInstructionSet(this.branch.ch, objValue[j]);
+					value += Structure.evalInstructionSet(this.sub, result[j]);
 				}
+			}
+			else if(result) // act as if
+			{
+				value += Structure.evalInstructionSet(this.sub, data);
 			}
 		}
 
 		return value;
 	};
 	proto.append = function(node){
-		this.branch.ch.push(node);
+		this.sub.push(node);
 	};
 	proto.symbol = function(symbol){
-		if(this.branch.cond == null)
+		if(this.condition == null)
 		{
-			this.sym = symbol;
-			this.branch.cond = new FnCall(symbol, this.parser);
+			this.conditionalSymbol = symbol;
+			this.condition = new FnCall(symbol, this.parser);
 		}
 		else
 		{
@@ -766,16 +771,16 @@
 		}
 	};
 	proto.isExpectable = function(symbol){
-		return this.sym.getValue() == symbol.getValue();
+		return this.conditionalSymbol.getValue() == symbol.getValue(); // ensure that opening tag matches closing tag
 	};
 	proto.get = function(i){
-		if(this.branch.ch.length == 0)
+		if(this.sub.length == 0)
 		{
 			return this;
 		}
 		else
 		{
-			return this.branch.ch[this.branch.ch.length - 1];
+			return this.sub[this.sub.length - 1];
 		}
 	};
 
@@ -995,6 +1000,10 @@
 			isPlainObject: function(obj){
 				return Object.prototype.toString.call(obj) == '[object Object]';
 			},
+			isIterableObject: function(obj)
+			{
+				return this.isPlainObject(obj) && 'length' in obj && obj.length > 0 && typeof obj[0] != 'undefined';
+			}
 		},
 		isFalsie: function(arg)
 		{
