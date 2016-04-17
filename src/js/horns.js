@@ -1,7 +1,5 @@
 (function(){
 
-	var registry = {};
-
 	Horns = function(str)
 	{
 		if(typeof str != 'string')
@@ -10,7 +8,7 @@
 		}
 
 		this.str = str; // string to be parsed
-		this.struct = new Horns.Struct(); // struct to be built, for further usages
+		this.struct = new Structure(); // struct to be built, for further usages
 		this.vars = { // some runtimes
 			tag: false, // flag that indicates whether we are inside {{}} or not
 			at: null, // current atom detected (replace with history)
@@ -75,7 +73,7 @@
 				this.saveTextChunk();
 				this.inTag(true, true);
 			},
-			syn: {'hash':true,'slash':true,'nested':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
+			syn: {'hash':true,'slash':true,'NestedTemplate':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
 		},
 		icu: {
 			find: function(i){
@@ -88,7 +86,7 @@
 					this.showError('Unexpected "}}}"');
 				}
 
-				this.inTag(false); // going out of the instruction
+				this.inTag(false); // going out of the Instruction
 			},
 			syn: {'io':true,'iou':true,'sp':true},
 		},
@@ -103,7 +101,7 @@
 					this.showError('Unexpected "}}"');
 				}
 
-				this.inTag(false); // going out of the instruction
+				this.inTag(false); // going out of the Instruction
 			},
 			syn: {'io':true,'iou':true,'sp':true},
 		},
@@ -123,12 +121,12 @@
 			},
 			syn: {'if':true,'each':true,'sym':true,'sp':true},
 		},
-		nested: {
+		NestedTemplate: {
 			find: function(i){
 				return this.testSubString(i, '>');
 			},
 			do: function(){
-				this.struct.append(new Horns.node.instruction.nested(this));
+				this.struct.append(new NodeType.Instruction.NestedTemplate(this));
 			},
 			syn: {'sym':true,'sp':true}
 		},
@@ -144,7 +142,7 @@
 				}
 				else
 				{
-					this.struct.forward(new Horns.node.instruction.ifelse(this));
+					this.struct.forward(new NodeType.Instruction.IfElse(this));
 				}
 			},
 			syn: {'ic':true, 'sym':true,'sp':true},
@@ -154,7 +152,7 @@
 				return this.testKeyWord(i, 'elseif');
 			},
 			do: function(){
-				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('elseif'))
+				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('elseif'))
 				{
 					this.showError('Unexpected "elseif"');
 				}
@@ -167,7 +165,7 @@
 				return this.testKeyWord(i, 'else');
 			},
 			do: function(){
-				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('else'))
+				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('else'))
 				{
 					this.showError('Unexpected "else"');
 				}
@@ -180,7 +178,7 @@
 				return this.testKeyWord(i, 'endif');
 			},
 			do: function(){
-				if(!this.struct.isCurrent('ifelse') || !this.struct.isExpectable('endif'))
+				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('endif'))
 				{
 					this.showError('Unexpected "endif"');
 				}
@@ -192,20 +190,20 @@
 		// all other is SYMBOL. This rule must go at the end always
 		sym: {
 			find: function(i){
-				return this.testSequence(i, Horns.getRegExp());
+				return this.testSequence(i, Symbol.getRegExp());
 			},
 			do: function(value, i){
 
-				var spl = new Horns.symbol(value, this);
+				var spl = new Symbol(value, this);
 
 				if(this.lastAtom() === null)
 				{
-					this.struct.append(new Horns.node.instruction(this.vars.tag.safe, this)); // add new instruction to the struct
+					this.struct.append(new NodeType.Instruction(this.vars.tag.safe, this)); // add new Instruction to the struct
 					this.struct.symbol(spl);
 				}
 				else if(this.lastAtom().atom == 'hash')
 				{
-					var node = new Horns.node.instruction.lless(this);
+					var node = new NodeType.Instruction.LogicLess(this);
 					node.symbol(spl);
 
 					this.struct.forward(node);
@@ -376,7 +374,7 @@
 				{
 					if(!this.inTag())
 					{
-						this.appendChunk(this.vars.i); // we are not inside of some instruction, then append the symbol to the text chunk
+						this.appendChunk(this.vars.i); // we are not inside of some Instruction, then append the symbol to the text chunk
 					}
 				}
 
@@ -387,7 +385,7 @@
 	};
 	proto.get = function(obj)
 	{
-		console.dir(this.struct);
+		//console.dir(this.struct);
 
 		return this.struct.tree.eval([], obj);
 	};
@@ -422,7 +420,7 @@
 	{
 		if(this.vars.chunk != '')
 		{
-			this.struct.append(new Horns.node.static(this.vars.chunk));
+			this.struct.append(new NodeType.static(this.vars.chunk));
 			this.vars.chunk = '';
 		}
 	};
@@ -480,29 +478,13 @@
 		}
 	};
 
-	// refactor
-	proto.evalSymbol = function(sym, ctx)
-	{
-		var val = ctx;
-		for(var k = 0; k < sym.length; k++)
-		{
-			val = val[sym[k]];
-			if(typeof val == 'undefined')
-			{
-				return '';
-			}
-		}
-
-		return val;
-	};
-
 	// symbol
-	Horns.symbol = function(value, parser)
+	var Symbol = function(value, parser)
 	{
 		this.parser = parser;
 		this.value = value.toString().trim();
 
-		var found = this.value.match(new RegExp('^'+Horns.getRegExp()));
+		var found = this.value.match(new RegExp('^'+Symbol.getRegExp()));
 		found = Array.prototype.slice.call(found);
 
 		this.path = found.pop(); // get symbol name
@@ -527,11 +509,7 @@
 		// parse symbol sequence
 		this.path = this.parseSeqence(this.path);
 	};
-	Horns.getRegExp = function()
-	{
-		return '(\.\./)*([a-zA-Z0-9_\\.]+)';
-	};
-	proto = Horns.symbol.prototype;
+	proto = Symbol.prototype;
 	proto.isSimple = function()
 	{
 		return this.back == 0 && this.path.length == 1;
@@ -553,6 +531,8 @@
 				}
 			}
 		}
+
+		console.dir(result);
 
 		// attach symbol path
 		for(k = 0; k < this.path.length; k++)
@@ -582,15 +562,19 @@
 	{
 		var path = this.absolutizePath(ctx);
 
-		return Util.getObjField(path, data);
+		return Util.dereferencePath(path, data);
 	};
 	proto.getValue = function()
 	{
 		return this.value;
 	};
+	Symbol.getRegExp = function()
+	{
+		return '(\.\./)*([a-zA-Z0-9_\\.]+)';
+	};
 
-	// function
-	Horns.fnCall = function(arg, parser)
+	// helper call
+	var FnCall = function(arg, parser)
 	{
 		this.name = 'pseudo';
 		this.args = [];
@@ -601,7 +585,7 @@
 			this.args.push(arg);
 		}
 	};
-	proto = Horns.fnCall.prototype;
+	proto = FnCall.prototype;
 	proto.addArg = function(symbol)
 	{
 		if(this.args.length == 1)
@@ -636,77 +620,19 @@
 			hArgs.push(this.args[k].eval(ctx, data));
 		}
 
-		var result = this.parser.vars.helpers[this.name].apply(Util.getObjField(ctx, data), hArgs);
-		return Util.isFalsie(result) ? '' : result.toString();
-	};
-
-	// structure
-	Horns.Struct = function()
-	{
-		this.current = new Horns.node.instruction();
-		this.tree = this.current;
-	};
-	proto = Horns.Struct.prototype;
-
-	proto.forward = function(node)
-	{
-		this.append(node);
-		this.current = node;
-	};
-	proto.append = function(node)
-	{
-		node.parent = this.current;
-		this.current.append(node);
-	};
-	proto.backward = function()
-	{
-		this.current = this.current.parent;
-	};
-	proto.symbol = function(sym)
-	{
-		this.current.get().symbol(sym);
-	};
-	proto.get = function(){
-		return this.current.get();
-	};
-	proto.isCurrent = function(type)
-	{
-		if(type == 'instruction')
-		{
-			return this.current instanceof Horns.node.instruction;
-		}
-
-		return this.current instanceof Horns.node.instruction[type];
-	};
-	proto.isExpectable = function(atom)
-	{
-		return this.current.isExpectable(atom);
-	};
-	proto.atoms = function(atom)
-	{
-		return this.current.atoms(atom);
-	};
-	Horns.Struct.evalInstructionSet = function(iSet, ctx)
-	{
-		var value = '';
-		for(var k = 0; k < iSet.length; k++)
-		{
-			value += iSet[k].eval(ctx);
-		}
-
-		return value;
+		return this.parser.vars.helpers[this.name].apply(Util.dereferencePath(ctx, data), hArgs);
 	};
 
 	// node types
 
-	Horns.node = {};
+	var NodeType = {};
 
 	/////////////////////////////////////////
-	// text node
-	Horns.node.static = function(val){
+	// text node: 'Just some text'
+	NodeType.static = function(val){
 		this.value = val;
 	};
-	proto = Horns.node.static.prototype;
+	proto = NodeType.static.prototype;
 	proto.eval = function(){
 		return this.value;
 	};
@@ -723,15 +649,15 @@
 	};
 
 	/////////////////////////////////////////
-	// instruction node (simple substitution)
-	Horns.node.instruction = function(escape, parser){
+	// Instruction node: {{varName}} or {{{varName}}}
+	NodeType.Instruction = function(escape, parser){
 		this.escape = !!escape;
 		this.sym = null;
 		this.ch = [];
 
 		this.parser = parser;
 	};
-	proto = Horns.node.instruction.prototype;
+	proto = NodeType.Instruction.prototype;
 	proto.eval = function(ctx, data)
 	{
 		// call function
@@ -742,7 +668,7 @@
 			value = this.sym.eval(ctx, data);
 		}
 
-		// call sub instructions
+		// call sub Instructions
 		for(var k = 0; k < this.ch.length; k++)
 		{
 			value += this.ch[k].eval(ctx, data);
@@ -756,7 +682,7 @@
 	proto.symbol = function(symbol){
 		if(this.sym == null)
 		{
-			this.sym = new Horns.fnCall(symbol, this.parser);
+			this.sym = new FnCall(symbol, this.parser);
 		}
 		else
 		{
@@ -777,8 +703,8 @@
 	};
 
 	/////////////////////////////////////////
-	// logic-less node
-	Horns.node.instruction.lless = function(parser){
+	// logic-less node: {{#inner}} {{...}} {{/inner}}
+	NodeType.Instruction.LogicLess = function(parser){
 		this.branch = {
 			cond: null,
 			ch: []
@@ -786,37 +712,39 @@
 		this.sym = false;
 		this.parser = parser;
 	};
-	proto = Horns.node.instruction.lless.prototype;
-	proto.eval = function(ctx)
+	proto = NodeType.Instruction.LogicLess.prototype;
+	proto.eval = function(ctx, data)
 	{
-		//var objValue = this.parser.callHelper(this.branch.cond, ctx);
-		var objValue = this.branch.cond.eval(ctx);
+		var objValue = this.branch.cond.eval(ctx, data);
+		console.dir(ctx);
+		console.dir('objValue');
+		console.dir(objValue);
 		var value = '';
 		if(objValue)
 		{
 			if(typeof objValue == 'string')
 			{
-				value += Horns.Struct.evalInstructionSet(this.branch.ch, ctx);
+				value += Structure.evalInstructionSet(this.branch.ch, data);
 			}
-			else if(objValue.toString() == '[object Object]') // plain object
+			else if(Util.type.isPlainObject(objValue)) // plain object
 			{
 				if('length' in objValue && objValue.length > 0 && typeof objValue[0] != 'undefined') // object supports iteration
 				{
 					for(var j = 0; j < objValue.length; j++)
 					{
-						value += Horns.Struct.evalInstructionSet(this.branch.ch, objValue[j]);
+						value += Structure.evalInstructionSet(this.branch.ch, objValue[j]);
 					}
 				}
 				else
 				{
-					value += Horns.Struct.evalInstructionSet(this.branch.ch, objValue);
+					value += Structure.evalInstructionSet(this.branch.ch, objValue);
 				}
 			}
-			else if(Object.prototype.toString.call(objValue) == '[object Array]') // array
+			else if(Util.type.isArray(objValue)) // array
 			{
 				for(var j = 0; j < objValue.length; j++)
 				{
-					value += Horns.Struct.evalInstructionSet(this.branch.ch, objValue[j]);
+					value += Structure.evalInstructionSet(this.branch.ch, objValue[j]);
 				}
 			}
 		}
@@ -830,7 +758,7 @@
 		if(this.branch.cond == null)
 		{
 			this.sym = symbol;
-			this.branch.cond = new Horns.fnCall(symbol, this.parser);
+			this.branch.cond = new FnCall(symbol, this.parser);
 		}
 		else
 		{
@@ -852,13 +780,13 @@
 	};
 
 	/////////////////////////////////////////
-	// nested template node
-	Horns.node.instruction.nested = function(parser){
+	// NestedTemplate template node: {{> nestedTemplate}}
+	NodeType.Instruction.NestedTemplate = function(parser){
 		this.name = false;
 		this.sym = false;
 		this.parser = parser;
 	};
-	proto = Horns.node.instruction.nested.prototype;
+	proto = NodeType.Instruction.NestedTemplate.prototype;
 	proto.symbol = function(symbol){
 
 		if(this.name === false)
@@ -867,7 +795,7 @@
 		}
 		else if(this.sym === false)
 		{
-			this.sym = new Horns.fnCall(symbol, this.parser);
+			this.sym = new FnCall(symbol, this.parser);
 		}
 		else
 		{
@@ -903,15 +831,15 @@
 	};
 
 	/////////////////////////////////////////
-	// if node
-	Horns.node.instruction.ifelse = function(parser){
+	// conditional operator node: {{#if smth}} ... {{else}} ... {{/if}} or {{if smth}} ... {{elseif anoter}} ... {{else}} ... {{endif}}
+	NodeType.Instruction.IfElse = function(parser){
 		this.branches = [];
 		this.newBranch();
 		this.metElse = false;
 
 		this.parser = parser;
 	};
-	proto = Horns.node.instruction.ifelse.prototype;
+	proto = NodeType.Instruction.IfElse.prototype;
 	proto.eval = function(ctx)
 	{
 		var value = '';
@@ -932,7 +860,7 @@
 
 			if(res)
 			{
-				// call sub instructions
+				// call sub Instructions
 				for(var k = 0; k < br.ch.length; k++)
 				{
 					value += br.ch[k].eval(ctx);
@@ -955,7 +883,7 @@
 
 		if(lastBr.cond == null)
 		{
-			lastBr.cond = new Horns.fnCall(symbol, this.parser);
+			lastBr.cond = new FnCall(symbol, this.parser);
 		}
 		else
 		{
@@ -1001,7 +929,65 @@
 		}
 	};
 
-	Util = {
+	// structure
+	var Structure = function()
+	{
+		this.current = new NodeType.Instruction();
+		this.tree = this.current;
+	};
+	proto = Structure.prototype;
+	proto.forward = function(node)
+	{
+		this.append(node);
+		this.current = node;
+	};
+	proto.append = function(node)
+	{
+		node.parent = this.current;
+		this.current.append(node);
+	};
+	proto.backward = function()
+	{
+		this.current = this.current.parent;
+	};
+	proto.symbol = function(sym)
+	{
+		this.current.get().symbol(sym);
+	};
+	proto.get = function(){
+		return this.current.get();
+	};
+	proto.isCurrent = function(type)
+	{
+		if(type == 'Instruction')
+		{
+			return this.current instanceof NodeType.Instruction;
+		}
+
+		return this.current instanceof NodeType.Instruction[type];
+	};
+	proto.isExpectable = function(atom)
+	{
+		return this.current.isExpectable(atom);
+	};
+	proto.atoms = function(atom)
+	{
+		return this.current.atoms(atom);
+	};
+	Structure.evalInstructionSet = function(iSet, ctx, data)
+	{
+		var value = '';
+		for(var k = 0; k < iSet.length; k++)
+		{
+			value += iSet[k].eval(ctx, data);
+		}
+
+		return value;
+	};
+
+	var registry = {};
+
+	var Util = {
 		type: {
 			isArray: function(obj){
 				return Object.prototype.toString.call(obj) == '[object Array]'
@@ -1014,7 +1000,7 @@
 		{
 			return typeof arg == 'undefined' || arg === null || arg === false;
 		},
-		getObjField: function(path, data)
+		dereferencePath: function(path, data)
 		{
 			var val = data;
 			for(var k = 0; k < path.length; k++)

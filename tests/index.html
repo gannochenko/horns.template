@@ -35,7 +35,8 @@
              }
              */
             //template: "{{animalAdj innerWhat.name}} список: <ul> {{#inner}} <li> {{name}} <ul> {{#innerSub}} <li> {{../../innerWhat.name}} \"{{name}}\" </li> {{/innerSub}} </ul> </li> {{/inner}} </ul>",
-            template: "! {{modifyTest innerWhat.name}} !",
+            //template: "! {{#inner}} {{modifyTest name}} {{/inner}} !",
+            template: "! {{#inner}} {{modifyTest name}} {{/inner}} !",
             data: {
                 what: 'список',
                 innerWhat: {name: 'элемент'},
@@ -58,14 +59,10 @@
         var p = new Horns.compile(tests[k].template);
 
 	    p.registerHelper('modifyTest', function(smth){
-		    console.dir(this);
-
 			return '"'+smth+'"';
 	    });
 
         p.registerHelper('animalAdj', function(animal){
-
-	        console.dir(animal);
 
             if(animal == 'змеями')
             {
