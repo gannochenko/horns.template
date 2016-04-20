@@ -730,7 +730,8 @@
 
 			if(Util.type.isIterableObject(result) || Util.type.isArray(result)) // array or object that supports iteration
 			{
-				data[resultKey] = result;
+				var dRef = Util.dereferencePath(ctx, data);
+				dRef[resultKey] = result;
 				ctx.push(resultKey);
 
 				for(j = 0; j < result.length; j++)
@@ -741,7 +742,7 @@
 				}
 
 				ctx.pop();
-				delete(data[resultKey]);
+				delete(dRef[resultKey]);
 			}
 			else if(result) // act as simple short conditional operator
 			{
@@ -802,7 +803,7 @@
 			this.parser.showError('Unexpected symbol "'+symbol+'"');
 		}
 	};
-	proto.eval = function(ctx)
+	proto.eval = function(ctx, data)
 	{
 		var value = '';
 
@@ -840,7 +841,7 @@
 		this.parser = parser;
 	};
 	proto = NodeType.Instruction.IfElse.prototype;
-	proto.eval = function(ctx)
+	proto.eval = function(ctx, data)
 	{
 		var value = '';
 
@@ -854,18 +855,12 @@
 			}
 			else
 			{
-				//res = this.parser.callHelper(br.cond, ctx);
-				res = bt.cond.eval(ctx);
+				res = br.cond.eval(ctx, data);
 			}
 
 			if(res)
 			{
-				// call sub Instructions
-				for(var k = 0; k < br.ch.length; k++)
-				{
-					value += br.ch[k].eval(ctx);
-				}
-
+				value += Structure.evalInstructionSet(br.ch, ctx, data);
 				break;
 			}
 		}

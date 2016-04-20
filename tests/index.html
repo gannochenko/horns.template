@@ -36,14 +36,30 @@
              */
             //template: "{{animalAdj innerWhat.name}} список: <ul> {{#inner}} <li> {{name}} <ul> {{#innerSub}} <li> {{../../innerWhat.name}} \"{{name}}\" </li> {{/innerSub}} </ul> </li> {{/inner}} </ul>",
             //template: "! {{#inner}} {{quoteText name}} {{/inner}} !",
-            template: "<h2>{{what}}</h2> <ul> {{#inner}} <li> {{quoteText name}} {{#../../innerWhat}} тип: {{../../innerWhat.name}} {{/../../innerWhat}} </li> {{/inner}} </ul>",
+            template: "" +
+                "<h2>{{what}}</h2>" +
+                "<ul>" +
+                    "{{#inner}}" +
+	                    "<li>" +
+	                        "{{quoteText name}}" +
+                            "{{#../../innerWhat}} тип: {{../../innerWhat.name}} {{/../../innerWhat}} ({{#if ../../innerWhat}} присутствует {{else}} не присутствует {{/if}})" +
+	                        "{{#if innerSub}}"+
+		                        "<ul>" +
+		                            "{{#innerSub}}"+
+		                                "<li>" +
+		                                    ">> {{name}}"+
+                                        "</li>"+
+		                            "{{/innerSub}}"+
+                                "</ul>"+
+		                    "{{/innerSub}}"+
+                        "</li>" +
+                    "{{/inner}}" +
+                "</ul>",
             data: {
                 what: 'список',
                 innerWhat: {name: 'элемент'},
                 inner: [
-                    {name:'первый', innerSub: [
-                        {name: '1-1'}, {name: '1-2'}
-                    ]},
+                    {name:'первый'},
                     {name:'второй', innerSub: [
                         {name: '2-1'}, {name: '2-2'}
                     ]}
