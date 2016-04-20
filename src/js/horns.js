@@ -385,9 +385,14 @@
 	};
 	proto.get = function(obj)
 	{
-		//console.dir(this.struct);
+		var str = this.struct.tree.eval([], obj);
 
-		return this.struct.tree.eval([], obj);
+		if(Horns.debugMode)
+		{
+			console.dir(str);
+		}
+
+		return str;
 	};
 	proto.registerHelper = function(name, cb)
 	{
@@ -532,8 +537,6 @@
 			}
 		}
 
-		console.dir(result);
-
 		// attach symbol path
 		for(k = 0; k < this.path.length; k++)
 		{
@@ -653,7 +656,7 @@
 	NodeType.Instruction = function(escape, parser){
 		this.escape = !!escape;
 		this.sym = null;
-		this.ch = [];
+		this.sub = [];
 
 		this.parser = parser;
 	};
@@ -669,15 +672,15 @@
 		}
 
 		// call sub Instructions
-		for(var k = 0; k < this.ch.length; k++)
+		for(var k = 0; k < this.sub.length; k++)
 		{
-			value += this.ch[k].eval(ctx, data);
+			value += this.sub[k].eval(ctx, data);
 		}
 
 		return value;
 	};
 	proto.append = function(node){
-		this.ch.push(node);
+		this.sub.push(node);
 	};
 	proto.symbol = function(symbol){
 		if(this.sym == null)
@@ -692,9 +695,9 @@
 	proto.get = function(i){
 		if(typeof i == 'undefined')
 		{
-			i = this.ch.length - 1;
+			i = this.sub.length - 1;
 		}
-		return this.ch[i];
+		return this.sub[i];
 	};
 	proto.atoms = function(i){
 	};
@@ -719,38 +722,30 @@
 		// 1) iterable object or array. then instruction acts as each
 		// 2) other stuff. then act as conditional operator, check if stuff is not falsie and enter\skip sub-instructions
 
-		console.dir(ctx);
-		console.dir('result');
-		console.dir(result);
 		var value = '';
 		if(result)
 		{
 			var j = null;
+			var resultKey = 'helper-result-'+Math.floor(Math.random()*100);
 
-			if(Util.type.isPlainObject(result)) // plain object
+			if(Util.type.isIterableObject(result) || Util.type.isArray(result)) // array or object that supports iteration
 			{
-				if(Util.type.isIterableObject(result)) // object supports iteration
-				{
-					for(j = 0; j < result.length; j++)
-					{
-						value += Structure.evalInstructionSet(this.sub, result[j]);
-					}
-				}
-				else
-				{
-					value += Structure.evalInstructionSet(this.sub, result);
-				}
-			}
-			else if(Util.type.isArray(result)) // array
-			{
+				data[resultKey] = result;
+				ctx.push(resultKey);
+
 				for(j = 0; j < result.length; j++)
 				{
-					value += Structure.evalInstructionSet(this.sub, result[j]);
+					ctx.push(j);
+					value += Structure.evalInstructionSet(this.sub, ctx, data);
+					ctx.pop();
 				}
+
+				ctx.pop();
+				delete(data[resultKey]);
 			}
-			else if(result) // act as if
+			else if(result) // act as simple short conditional operator
 			{
-				value += Structure.evalInstructionSet(this.sub, data);
+				value += Structure.evalInstructionSet(this.sub, ctx, data);
 			}
 		}
 

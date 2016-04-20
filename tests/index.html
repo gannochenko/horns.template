@@ -35,8 +35,8 @@
              }
              */
             //template: "{{animalAdj innerWhat.name}} список: <ul> {{#inner}} <li> {{name}} <ul> {{#innerSub}} <li> {{../../innerWhat.name}} \"{{name}}\" </li> {{/innerSub}} </ul> </li> {{/inner}} </ul>",
-            //template: "! {{#inner}} {{modifyTest name}} {{/inner}} !",
-            template: "! {{#inner}} {{modifyTest name}} {{/inner}} !",
+            //template: "! {{#inner}} {{quoteText name}} {{/inner}} !",
+            template: "<h2>{{what}}</h2> <ul> {{#inner}} <li> {{quoteText name}} {{#../../innerWhat}} тип: {{../../innerWhat.name}} {{/../../innerWhat}} </li> {{/inner}} </ul>",
             data: {
                 what: 'список',
                 innerWhat: {name: 'элемент'},
@@ -52,13 +52,13 @@
         }
     ];
 
-    Horns.debug(false);
+    Horns.debug(true);
 
     for(var k in tests)
     {
         var p = new Horns.compile(tests[k].template);
 
-	    p.registerHelper('modifyTest', function(smth){
+	    p.registerHelper('quoteText', function(smth){
 			return '"'+smth+'"';
 	    });
 
@@ -137,7 +137,6 @@
 
         var html = p.get(tests[k].data);
 
-        console.dir(html);
         document.write(html);
     }
 
