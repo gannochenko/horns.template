@@ -763,7 +763,7 @@
 		}
 		else
 		{
-			this.parser.showError('Unexpected symbol "'+symbol+'"');
+			this.parser.showError('Unexpected symbol "'+symbol.value+'"');
 		}
 	};
 	proto.isExpectable = function(symbol){
@@ -784,7 +784,7 @@
 	// NestedTemplate template node: {{> nestedTemplate}}
 	NodeType.Instruction.NestedTemplate = function(parser){
 		this.name = false;
-		this.sym = false;
+		this.ctxSymbol = false;
 		this.parser = parser;
 	};
 	proto = NodeType.Instruction.NestedTemplate.prototype;
@@ -794,31 +794,41 @@
 		{
 			this.name = symbol;
 		}
-		else if(this.sym === false)
+		else if(this.ctxSymbol === false)
 		{
-			this.sym = new FnCall(symbol, this.parser);
+			this.ctxSymbol = new FnCall(symbol, this.parser);
 		}
 		else
 		{
-			this.parser.showError('Unexpected symbol "'+symbol+'"');
+			this.parser.showError('Unexpected symbol "'+symbol.value+'"');
 		}
 	};
 	proto.eval = function(ctx, data)
 	{
 		var value = '';
 
+		console.dir('eval nested');
+
 		if(this.name !== false)
 		{
-			var template = registry[this.name];
+			var template = registry[this.name.value];
 			if(template)
 			{
-				if(this.sym !== false)
-				{
-					//ctx = this.parser.callHelper(this.sym, ctx);
-					ctx = this.sym.eval(ctx);
-				}
+				console.dir(this.ctxSymbol);
 
-				value = template.get(ctx);
+				var rData = null;
+				if(this.ctxSymbol !== false)
+				{
+					rData = this.ctxSymbol.eval(ctx, data);
+				}
+				else
+				{
+					rData = Util.dereferencePath(ctx, data);
+				}
+				console.dir(rData);
+				console.dir(Util.clone(ctx));
+
+				value = template.get(rData);
 			}
 		}
 

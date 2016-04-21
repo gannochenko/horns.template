@@ -37,7 +37,7 @@
             //template: "{{animalAdj innerWhat.name}} список: <ul> {{#inner}} <li> {{name}} <ul> {{#innerSub}} <li> {{../../innerWhat.name}} \"{{name}}\" </li> {{/innerSub}} </ul> </li> {{/inner}} </ul>",
             //template: "! {{#inner}} {{quoteText name}} {{/inner}} !",
             template: "" +
-                "<h2>{{what}}</h2>" +
+                "<h2>&#123;&#123; {{what}}</h2>" +
                 "<ul>" +
                     "{{#inner}}" +
 	                    "<li>" +
@@ -55,11 +55,21 @@
                         "</li>" +
                     "{{/inner}}" +
                 "</ul>",
+	        template: "" +
+		        "<h2>&#123;&#123; {{what}}</h2>" +
+	            "<ul>" +
+			        "{{#inner}}" +
+				        "{{> listItem}}"+
+			        "{{/inner}}" +
+		        "</ul>",
+	        listItemTemplate: "<li>" +
+			        "{{quoteText name}}"+
+	        "</li>",
             data: {
                 what: 'список',
                 innerWhat: {name: 'элемент'},
                 inner: [
-                    {name:'первый'},
+                    {name:'первый', sub: {name: 'первый-sub'}},
                     {name:'второй', innerSub: [
                         {name: '2-1'}, {name: '2-2'}
                     ]}
@@ -70,9 +80,18 @@
 
     Horns.debug(true);
 
+    var li = new Horns.compile(tests[0].listItemTemplate, 'listItem');
+    li.registerHelper('quoteText', function(smth){
+	    return '"'+smth+'"';
+    });
+
     for(var k in tests)
     {
         var p = new Horns.compile(tests[k].template);
+
+	    p.registerHelper('justAnotherTest', function(arg){
+		    return {sub: arg};
+	    });
 
 	    p.registerHelper('quoteText', function(smth){
 			return '"'+smth+'"';
