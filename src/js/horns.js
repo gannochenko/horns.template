@@ -433,7 +433,7 @@
 	{
 		this.vars.chunk += this.str[i];
 	};
-	// test if this.str has substring that equal to str at position i
+	// test if this.str has substring that equals to str at position i
 	proto.testSubString = function(i, str)
 	{
 		if(this.str.substr(i, str.length) == str)
@@ -1005,10 +1005,6 @@
 				return this.isPlainObject(obj) && 'length' in obj && obj.length > 0 && typeof obj[0] != 'undefined';
 			}
 		},
-		isFalsie: function(arg)
-		{
-			return typeof arg == 'undefined' || arg === null || arg === false;
-		},
 		dereferencePath: function(path, data)
 		{
 			var val = data;
@@ -1053,7 +1049,7 @@
 			}
 
 			return result;
-		},
+		}
 	}
 
 }).call(this);

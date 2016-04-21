@@ -2,177 +2,121 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Horns tests</title>
 </head>
 <body>
+
+<h1>Horns test page</h1>
 
 <script src="../src/js/horns.js"></script>
 <script>
 
-    //var nestedTemplate = ' (а потом он {{action}} как {{like}})';
-    //new Horns.compile(nestedTemplate, 'nestedAfter');
+	var helpers = {
+		quote: function(arg){
+			return '&laquo;'+arg+'&raquo;';
+		},
+		implodeArgs: function(){
+			return Array.prototype.slice.call(arguments).join(', ');
+		},
+		implode: function(arg){
+			return arg.join(', ');
+		},
+		ucFirst: function(arg){
+			arg = arg.toString();
+			return arg.substr(0, 1).toUpperCase()+arg.substr(1);
+		},
+		totalPrice: function(arg){
+			var sum = 0;
+			for(var k = 0; k < arg.length; k++)
+			{
+				sum += parseInt(arg[k].price);
+			}
+			return sum;
+		}
+	};
 
-    var tests = [
+	var tests = [
+		{
+			data: {
+				personA: 'brown fox',
+				personB: 'dog'
+			},
+			template: 'The quick {{quote personA}} jumps over the lazy {{quote personB}}',
+		},
+		{
+			data: {
+				guestName: 'Steve',
+				meal: [
+					{
+						title: 'breakfast',
+						time: '9:00 am',
+						menu: ['Coffee cup', 'Sandwich', 'Cigarette']
+					},
+					{
+						title: 'dinner',
+						time: '1:00 pm',
+						menu: ['Vegetable salad', 'Mushroom soup', 'Cherry compote', 'Bread']
+					},
+					{
+						title: 'supper',
+						time: '6:00 pm',
+						menu: ['Sausages with roasted potatoes', 'Tea cup', 'Apple pie', 'Good movie to watch']
+					}
+				],
+			},
+			template: "<h3>Dear {{guestName}}, your menu for today is:</h3>" +
+			"<ul>" +
+			"{{#meal}}" +
+				"<li>" +
+					"<b>{{ucFirst title}}</b><br />" +
+					"Time: {{time}}<br />" +
+					"Dishes: {{implode menu}}" +
+				"</li>" +
+			"{{/meal}}" +
+			"</ul>"
+		},
+		{
+			data: {
+				positions: {
+					length: 3,
+					0: {
+						price: 300
+					},
+					1: {
+						price: 700
+					},
+					2: {
+						price: 1500
+					}
+				},
+				payment: [
+					{title: 'Visa/Master Card', value: 'card'},
+					{title: 'Cash', value: 'cash', default: true},
+				]
+			},
+			template: "<h3>Your order is:</h3>" +
+			"Total price: ${{totalPrice positions}}<br />" +
+			"Pay with: " +
+			"<select>" +
+				"{{#payment}}" +
+					"<option value=\"{{value}}\" {{#if default}} selected=\"selected\"{{/if}}>{{title}}</option>"+
+				"{{/payment}}" +
+			"</select>"
+		}
+	];
 
-        {
-            //template: " до {{#howEntered}} внутри {{/howEntered}} после {{#animal}} {{good}} vs {{bad}} {{/animal}}, получено ранений: {{#injures}} {{name}}{{#severity}} (тяжесть: {{severity}}){{/severity}}, {{/injures}}",
-            //template: " до {{field}}  {{#if test}} внутри {{/if}} после ",
-            //template: "Получено ранений: {{#injures}} {{name}} у {{../animal.good}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}}",
-            //template: "{{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}}111 {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}",
-            //template: "   Вступив в бой{{#howEntered}} ({{howEntered}}){{/howEntered}} с {{animalAdj animal.bad}} {{  animal.bad  }} — {{  #  if animalIsSnake}}эфой и гадюкой{{elseif animalIsFromLionKing}} {{if animalIsLion}}симбой и мега-симбой{{else}}тимоном и пумбой{{endif}}{{else}}неизвестными{{/if}}, {{if hasWeapon}}(из оружия было: {{weapon.name}} ({{weapon.slot.type}} {{weapon.slot.name}})){{endif}}— {{animalAdjGood}} {{animal.good}} {{whatGoodAnimalDid}}. Получено ранений: {{#injures}} {{name}} {{#severity}}(тяжесть: {{severity}}){{/severity}}, {{/injures}} {{#after}} {{> nestedAfter}} {{/after}}",
-            /*data: {
-             'animal': {'good': 'ежик', bad: 'мангустом и кабаном'},
-             weapon: {name: 'монтировка', slot: {name: 'рука', type:'левая'}},
-             howEntered: 'быстро',
-             injures: [
-             {name: 'рваная рана руки'},
-             {name: 'порез сосков', severity: 'низкая'},
-             {name: 'синяк на яичке', severity: 'высочайшая'},
-             ],
-             after: {action: 'бежал', like: 'олень'}
-             //'unescaped': 'unescaped',
-             //'one': {'Helper': {'Value':'value'}}
-             }
-             */
-            //template: "{{animalAdj innerWhat.name}} список: <ul> {{#inner}} <li> {{name}} <ul> {{#innerSub}} <li> {{../../innerWhat.name}} \"{{name}}\" </li> {{/innerSub}} </ul> </li> {{/inner}} </ul>",
-            //template: "! {{#inner}} {{quoteText name}} {{/inner}} !",
-            template: "" +
-                "<h2>&#123;&#123; {{what}}</h2>" +
-                "<ul>" +
-                    "{{#inner}}" +
-	                    "<li>" +
-	                        "{{quoteText name}}" +
-                            "{{#../../innerWhat}} тип: {{../../innerWhat.name}} {{/../../innerWhat}} ({{#if ../../innerWhat}} присутствует {{else}} не присутствует {{/if}})" +
-	                        "{{#if innerSub}}"+
-		                        "<ul>" +
-		                            "{{#innerSub}}"+
-		                                "<li>" +
-		                                    ">> {{name}}"+
-                                        "</li>"+
-		                            "{{/innerSub}}"+
-                                "</ul>"+
-		                    "{{/innerSub}}"+
-                        "</li>" +
-                    "{{/inner}}" +
-                "</ul>",
-	        template: "" +
-		        "<h2>&#123;&#123; {{what}}</h2>" +
-	            "<ul>" +
-			        "{{#inner}}" +
-				        "{{> listItem}}"+
-			        "{{/inner}}" +
-		        "</ul>",
-	        listItemTemplate: "<li>" +
-			        "{{quoteText name}}"+
-	        "</li>",
-            data: {
-                what: 'список',
-                innerWhat: {name: 'элемент'},
-                inner: [
-                    {name:'первый', sub: {name: 'первый-sub'}},
-                    {name:'второй', innerSub: [
-                        {name: '2-1'}, {name: '2-2'}
-                    ]}
-                ]
-            }
-        }
-    ];
+	var k, j, template;
 
-    Horns.debug(true);
+	for(k in tests)
+	{
+		template = new Horns.compile(tests[k].template);
+		for(j in helpers)
+		{
+			template.registerHelper(j, helpers[j]);
+		}
 
-    var li = new Horns.compile(tests[0].listItemTemplate, 'listItem');
-    li.registerHelper('quoteText', function(smth){
-	    return '"'+smth+'"';
-    });
-
-    for(var k in tests)
-    {
-        var p = new Horns.compile(tests[k].template);
-
-	    p.registerHelper('justAnotherTest', function(arg){
-		    return {sub: arg};
-	    });
-
-	    p.registerHelper('quoteText', function(smth){
-			return '"'+smth+'"';
-	    });
-
-        p.registerHelper('animalAdj', function(animal){
-
-            if(animal == 'змеями')
-            {
-                return 'шипящими';
-            }
-            else if(animal == 'верблюдами')
-            {
-                return 'флегматичными';
-            }
-            else if(animal == 'львами')
-            {
-                return 'грациозными';
-            }
-            else
-            {
-                return 'неизвестными';
-            }
-        });
-
-        p.registerHelper('animalAdjGood', function(){
-            if(this.animal.good == 'ежик')
-            {
-                return ['маленький', 'цепкий', 'храбрый'].join(', ');
-            }
-            else if(this.animal.good == 'слон')
-            {
-                return 'хитрый';
-            }
-        });
-
-        p.registerHelper('animalIsSnake', function(){
-            return this.animal.bad == 'змеями';
-        });
-
-        p.registerHelper('animalIsLion', function(){
-            return this.animal.bad == 'львами';
-        });
-
-        p.registerHelper('animalIsFromLionKing', function(){
-            return this.animal.bad == 'львами' || this.animal.bad == 'мангустом и кабаном';
-        });
-
-        p.registerHelper('hasWeapon', function(){
-            return this.weapon != undefined;
-        });
-
-        p.registerHelper('whatGoodAnimalDid', function(){
-            if(this.animal.good = 'ёжиек')
-            {
-                if(this.animal.bad == 'змеями')
-                {
-                    return 'чуть не съел их';
-                }
-                else if(this.animal.bad == 'львами')
-                {
-                    return 'поспешно свалил от них';
-                }
-                else
-                {
-                    return 'возможно, огреб от них по полной';
-                }
-            }
-            else if(this.animal.good = 'слон')
-            {
-                return 'растоптал их';
-            }
-            else
-            {
-                return 'вышел покурить';
-            }
-        });
-
-        var html = p.get(tests[k].data);
-
-        document.write(html);
+        document.write(template.get(tests[k].data));
+		document.write('<hr />');
     }
 
 </script>
