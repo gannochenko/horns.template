@@ -186,8 +186,6 @@
 			},
 			syn: {'ic':true,'sp':true}
 		},
-
-		// all other is SYMBOL. This rule must go at the end always
 		sym: {
 			find: function(i){
 				return this.testSequence(i, Symbol.getRegExp());
@@ -222,7 +220,7 @@
 				}
 			},
 			syn: {'ic':true,'icu':true,'sym':true,'sp':true}
-		}// introduce allowed characters here
+		} // the last option: symbol, with allowed characters list
 	};
 	proto.atomList = []; // a list of atoms symbolic codes
 	for(var k in proto.atoms)
@@ -807,15 +805,11 @@
 	{
 		var value = '';
 
-		console.dir('eval nested');
-
 		if(this.name !== false)
 		{
 			var template = registry[this.name.value];
 			if(template)
 			{
-				console.dir(this.ctxSymbol);
-
 				var rData = null;
 				if(this.ctxSymbol !== false)
 				{
@@ -825,8 +819,6 @@
 				{
 					rData = Util.dereferencePath(ctx, data);
 				}
-				console.dir(rData);
-				console.dir(Util.clone(ctx));
 
 				value = template.get(rData);
 			}

@@ -6,6 +6,27 @@
 </head>
 <body>
 
+<style>
+	.green{
+		color: green;
+	}
+	.red {
+		color: red;
+	}
+	.container {
+		margin: 10px 0;
+	}
+	td, th {
+		padding: 10px 5px;
+	}
+	tr th {
+		border-bottom: 1px solid gray;
+	}
+	tbody tr:nth-child(even){
+		background-color: #ececef;
+	}
+</style>
+
 <h1>Horns test page</h1>
 
 <script src="../src/js/horns.js"></script>
@@ -29,9 +50,38 @@
 			var sum = 0;
 			for(var k = 0; k < arg.length; k++)
 			{
-				sum += parseInt(arg[k].price);
+				sum += parseInt(arg[k].price) * parseInt(arg[k].quantity) * (arg[k].discount ? arg[k].discount : 1);
 			}
 			return sum;
+		},
+		isNotEmpty: function(arg){
+			return arg.length > 0;
+		},
+		getCost: function(){
+			return this.price * this.quantity;
+		},
+		getDiscountCost: function(){
+			var cost = this.price * this.quantity;
+
+			if(this.discount)
+			{
+				cost = Math.floor(cost * this.discount);
+			}
+
+			return cost;
+		},
+		isPistol: function(){
+			return this.type == 'P';
+		},
+		isRifle: function(){
+			return this.type == 'R';
+		},
+		isArmor: function(){
+			return this.type == 'A';
+		},
+		getFactionName: function()
+		{
+			return this == 'CT' ? 'CT Forces' : 'Terrorists';
 		}
 	};
 
@@ -42,6 +92,7 @@
 				personB: 'dog'
 			},
 			template: 'The quick {{quote personA}} jumps over the lazy {{quote personB}}',
+			name: 'jumping'
 		},
 		{
 			data: {
@@ -50,7 +101,7 @@
 					{
 						title: 'breakfast',
 						time: '9:00 am',
-						menu: ['Coffee cup', 'Sandwich', 'Cigarette']
+						menu: ['Cup of coffee', 'Sandwich', 'Cigarette']
 					},
 					{
 						title: 'dinner',
@@ -60,7 +111,7 @@
 					{
 						title: 'supper',
 						time: '6:00 pm',
-						menu: ['Sausages with roasted potatoes', 'Tea cup', 'Apple pie', 'Good movie to watch']
+						menu: ['Sausages with roasted potatoes', 'Cup of tea', 'Apple pie', 'Good movie to watch']
 					}
 				],
 			},
@@ -73,35 +124,130 @@
 					"Dishes: {{implode menu}}" +
 				"</li>" +
 			"{{/meal}}" +
-			"</ul>"
+			"</ul>",
+			name: 'menu'
 		},
 		{
 			data: {
-				positions: {
-					length: 3,
+				basket: {
+					length: 4,
 					0: {
-						price: 300
+						name: 'Fish&Chips',
+						quantity: 3,
+						price: 10
 					},
 					1: {
+						name: 'Pair of socks',
+						quantity: 5,
 						price: 700
 					},
 					2: {
+						name: 'Microwave owen',
+						quantity: 1,
 						price: 1500
+					},
+					3: {
+						name: 'Mercedes 600',
+						quantity: 1,
+						price: 900000000,
+						discount: 0.03
 					}
 				},
 				payment: [
 					{title: 'Visa/Master Card', value: 'card'},
-					{title: 'Cash', value: 'cash', default: true},
+					{title: 'Cash', value: 'cash', default: true}
 				]
 			},
-			template: "<h3>Your order is:</h3>" +
-			"Total price: ${{totalPrice positions}}<br />" +
-			"Pay with: " +
-			"<select>" +
-				"{{#payment}}" +
-					"<option value=\"{{value}}\" {{#if default}} selected=\"selected\"{{/if}}>{{title}}</option>"+
-				"{{/payment}}" +
-			"</select>"
+			template: "<form>" +
+				"<h3>Your order is:</h3>" +
+				"<div class=\"container\">" +
+					"{{#if isNotEmpty basket}}" +
+						"<table cellpadding=\"0\" cellspacing=\"0\">" +
+							"<thead><tr><th>Name</th><th>Price</th><th>Quantity</th><th>Cost</th></tr></thead>" +
+							"<tbody>" +
+								"{{#basket}}" +
+									"<tr>" +
+										"<td>{{name}}</td>" +
+										"<td>${{price}}</td>" +
+										"<td>{{quantity}}</td>" +
+										"<td>{{#if discount}}<s>{{/if}}${{getCost this}}{{#if discount}}</s> (with discount: ${{getDiscountCost this}}){{/if}}</td>" +
+									"</tr>" +
+								"{{/basket}}" +
+							"</tbody>" +
+						"</table>" +
+					"{{else}}<span class=\"red\">Your basket is empty</span>{{/if}}" +
+				"</div>" +
+				"Total price: <span class=\"green\">${{totalPrice basket}}</span><br /><br />" +
+				"Pay with: " +
+				"<select>" +
+					"{{#payment}}" +
+						"<option value=\"{{value}}\" {{#if default}} selected=\"selected\"{{/if}}>{{title}}</option>"+
+					"{{/payment}}" +
+				"</select>" +
+			"</form>",
+			name: 'basket'
+		},
+		{
+			data: {
+				weapon: [
+					{
+						name: 'Glock-17',
+						type: 'P',
+						sides: ['CT'],
+						inManual: false
+					},
+					{
+						name: 'MP-5',
+						type: 'R',
+						sides: ['CT', 'T'],
+						inManual: true
+					},
+					{
+						name: 'AK-47',
+						type: 'R',
+						sides: ['T']
+					},
+					{
+						name: 'Kevlar',
+						type: 'A',
+						sides: ['CT', 'T'],
+						inManual: true
+					}
+				]
+			},
+			template: "<h3>Counter-Strike 1.6 weapons:</h3>" +
+			"<ul>" +
+				"{{#weapon}}" +
+					"<li>{{name}}, type: {{#if isPistol this}}Pistol{{elseif isRifle this}}Rifle{{elseif isArmor this}}Armor{{else}}Unknown{{/if}}<br />" +
+						"Who can buy:<ul>" +
+							"{{#sides}}" +
+								"<li>{{getFactionName this}}{{#../../inManual}}&nbsp;&nbsp;<a href=\"#{{../../name}}\">See game manual</a>{{/../../inManual}}</li>" +
+							"{{/sides}}" +
+						"</ul>" +
+					"</li>" +
+				"{{/weapon}}" +
+			"</ul>",
+			name: 'cs'
+		},
+		{
+			data: {
+				jumps: [
+					{
+						personA: 'brown fox',
+						personB: 'dog'
+					},
+					{
+						personA: 'crazy elk',
+						personB: 'brutal crocodile'
+					},
+					{
+						personA: 'smelly squirrel',
+						personB: 'gorgeous giraffe'
+					}
+				]
+			},
+			template: "<h3>Jumping around:</h3> {{#jumps}} {{> jumping}} <br /> {{/jumps}}",
+			name: 'jumpingPairs'
 		}
 	];
 
@@ -109,7 +255,7 @@
 
 	for(k in tests)
 	{
-		template = new Horns.compile(tests[k].template);
+		template = new Horns.compile(tests[k].template, tests[k].name);
 		for(j in helpers)
 		{
 			template.registerHelper(j, helpers[j]);
