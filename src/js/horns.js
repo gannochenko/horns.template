@@ -14,13 +14,12 @@
 			at: null, // current atom detected (replace with history)
 			i: 0, // current parse position
 			chunk: '', // a currently read part of static segment in template. every time by reaching {{ drops to ''
-			helpers: { // registered helpers
-				'pseudo': function(arg){
-					return arg;
-				}
-			}
+			helpers: {} // registered helpers
 		};
 
+		this.registerHelper('pseudo', function(arg){
+			return arg;
+		});
 		this.buildStruct();
 		delete(this.str);
 
@@ -126,7 +125,7 @@
 				return this.testSubString(i, '>');
 			},
 			do: function(){
-				this.struct.append(new NodeType.Instruction.NestedTemplate(this));
+				this.struct.append(new Node.Instruction.NestedTemplate(this));
 			},
 			syn: {'sym':true,'sp':true}
 		},
@@ -142,7 +141,7 @@
 				}
 				else
 				{
-					this.struct.forward(new NodeType.Instruction.IfElse(this));
+					this.struct.forward(new Node.Instruction.IfElse(this));
 				}
 			},
 			syn: {'ic':true, 'sym':true,'sp':true},
@@ -196,12 +195,12 @@
 
 				if(this.lastAtom() === null)
 				{
-					this.struct.append(new NodeType.Instruction(this.vars.tag.safe, this)); // add new Instruction to the struct
+					this.struct.append(new Node.Instruction(this.vars.tag.safe, this)); // add new Instruction to the struct
 					this.struct.symbol(spl);
 				}
 				else if(this.lastAtom().atom == 'hash')
 				{
-					var node = new NodeType.Instruction.LogicLess(this);
+					var node = new Node.Instruction.LogicLess(this);
 					node.symbol(spl);
 
 					this.struct.forward(node);
@@ -228,16 +227,6 @@
 		proto.atomList.push(k);
 	}
 
-	proto.walk = function(i, cb)
-	{
-		for(var k = i; k < this.str.length; k++)
-		{
-			if(cb.apply(this, [k]) === false)
-			{
-				break;
-			}
-		}
-	};
 	proto.lastAtom = function(found)
 	{
 		if(typeof found == 'undefined')
@@ -317,14 +306,9 @@
 
 		return result;
 	};
-	proto.showError = function(message, i)
+	proto.showError = function(message)
 	{
-		if(typeof i == 'undefined')
-		{
-			i = this.vars.i;
-		}
-
-		i += 1;
+		var i = this.vars.i + 1;
 		message = message || '';
 
 		var range = 30;
@@ -336,10 +320,6 @@
 		var cap = (i > range ? '   ' : '')+' '.repeat(leftRange - 1)+'^';
 
 		throw new Error('Parse error at '+i+': '+message+"\r\n"+chunk+"\r\n"+cap);
-	};
-	proto.getStruct = function()
-	{
-		return this.struct;
 	};
 	proto.buildStruct = function()
 	{
@@ -365,7 +345,7 @@
 				if(next.atom != false)
 				{
 					// do atoms action
-					this.evalAtom(next);
+					this.evaluateAtom(next);
 					this.lastAtom(next); // save atom just found
 				}
 				else
@@ -383,7 +363,7 @@
 	};
 	proto.get = function(obj)
 	{
-		var str = this.struct.tree.eval([], obj);
+		var str = this.struct.tree.evaluate([], obj);
 
 		if(Horns.debugMode)
 		{
@@ -399,23 +379,38 @@
 			this.vars.helpers[name] = cb;
 		}
 	};
-	proto.inTag = function(sw, safe)
+	proto.callHelper = function(name, args, ctx, data)
 	{
-		if(typeof sw != 'undefined')
+		if(typeof this.vars.helpers[name] == 'undefined')
 		{
-			if(Horns.debugMode && !sw)
+			return ''; // todo: or may be null?
+		}
+
+		var hArgs = [];
+		for(var k = 0; k < args.length; k++)
+		{
+			hArgs.push(args[k].evaluate(ctx, data));
+		}
+
+		return this.vars.helpers[name].apply(Util.dereferencePath(ctx, data), hArgs);
+	};
+	proto.inTag = function(change, safe)
+	{
+		if(typeof change != 'undefined')
+		{
+			if(Horns.debugMode && !change)
 			{
 				console.dir('-------------------------------');
 			}
 
-			this.vars.tag = sw ? {safe: safe, atoms: []} : false;
+			this.vars.tag = change ? {safe: safe, atoms: []} : false;
 		}
 		else
 		{
 			return this.vars.tag !== false;
 		}
 	};
-	proto.evalAtom = function(found)
+	proto.evaluateAtom = function(found)
 	{
 		return this.atoms[found.atom].do.apply(this, [found.value, this.vars.i, found.offset]);
 	};
@@ -423,7 +418,7 @@
 	{
 		if(this.vars.chunk != '')
 		{
-			this.struct.append(new NodeType.static(this.vars.chunk));
+			this.struct.append(new Node.text(this.vars.chunk));
 			this.vars.chunk = '';
 		}
 	};
@@ -559,7 +554,7 @@
 
 		return sq;
 	};
-	proto.eval = function(ctx, data)
+	proto.evaluate = function(ctx, data)
 	{
 		var path = this.absolutizePath(ctx);
 
@@ -587,7 +582,7 @@
 		}
 	};
 	proto = FnCall.prototype;
-	proto.addArg = function(symbol)
+	proto.addArgument = function(arg)
 	{
 		if(this.args.length == 1)
 		{
@@ -603,38 +598,24 @@
 			this.args = [];
 		}
 
-		this.args.push(symbol);
+		this.args.push(arg);
 	};
-	proto.eval = function(ctx, data)
+	proto.evaluate = function(ctx, data)
 	{
-		var hName = '';
-		var args = this.args;
-
-		if(typeof this.parser.vars.helpers[this.name] == 'undefined')
-		{
-			return '';
-		}
-
-		var hArgs = [];
-		for(var k = 0; k < this.args.length; k++)
-		{
-			hArgs.push(this.args[k].eval(ctx, data));
-		}
-
-		return this.parser.vars.helpers[this.name].apply(Util.dereferencePath(ctx, data), hArgs);
+		return this.parser.callHelper(this.name, this.args, ctx, data);
 	};
 
 	// node types
 
-	var NodeType = {};
+	var Node = {};
 
 	/////////////////////////////////////////
 	// text node: 'Just some text'
-	NodeType.static = function(val){
+	Node.text = function(val){
 		this.value = val;
 	};
-	proto = NodeType.static.prototype;
-	proto.eval = function(){
+	proto = Node.text.prototype;
+	proto.evaluate = function(){
 		return this.value;
 	};
 	proto.append = function(){
@@ -651,28 +632,28 @@
 
 	/////////////////////////////////////////
 	// Instruction node: {{varName}} or {{{varName}}}
-	NodeType.Instruction = function(escape, parser){
+	Node.Instruction = function(escape, parser){
 		this.escape = !!escape;
 		this.sym = null;
 		this.sub = [];
 
 		this.parser = parser;
 	};
-	proto = NodeType.Instruction.prototype;
-	proto.eval = function(ctx, data)
+	proto = Node.Instruction.prototype;
+	proto.evaluate = function(ctx, data)
 	{
 		// call function
 		var value = '';
 
 		if(this.sym !== null)
 		{
-			value = this.sym.eval(ctx, data);
+			value = this.sym.evaluate(ctx, data);
 		}
 
 		// call sub Instructions
 		for(var k = 0; k < this.sub.length; k++)
 		{
-			value += this.sub[k].eval(ctx, data);
+			value += this.sub[k].evaluate(ctx, data);
 		}
 
 		return value;
@@ -687,7 +668,7 @@
 		}
 		else
 		{
-			this.sym.addArg(symbol);
+			this.sym.addArgument(symbol);
 		}
 	};
 	proto.get = function(i){
@@ -705,17 +686,17 @@
 
 	/////////////////////////////////////////
 	// logic-less node: {{#inner}} {{...}} {{/inner}}
-	NodeType.Instruction.LogicLess = function(parser){
+	Node.Instruction.LogicLess = function(parser){
 		this.sub = []; // sub-instruction set
 		this.condition = null; // conditional function call, it always will be pseudo FnCall
 		this.conditionalSymbol = false; // instruction symbol, i.e. when {{#inner}} met it will be "inner"
 		this.parser = parser; // link to horns object
 	};
-	proto = NodeType.Instruction.LogicLess.prototype;
-	proto.eval = function(ctx, data)
+	proto = Node.Instruction.LogicLess.prototype;
+	proto.evaluate = function(ctx, data)
 	{
 		// calc logic less condition
-		var result = this.condition.eval(ctx, data);
+		var result = this.condition.evaluate(ctx, data);
 		// helper may return the following:
 		// 1) iterable object or array. then instruction acts as each
 		// 2) other stuff. then act as conditional operator, check if stuff is not falsie and enter\skip sub-instructions
@@ -735,7 +716,7 @@
 				for(j = 0; j < result.length; j++)
 				{
 					ctx.push(j);
-					value += Structure.evalInstructionSet(this.sub, ctx, data);
+					value += Structure.evaluateInstructionSet(this.sub, ctx, data);
 					ctx.pop();
 				}
 
@@ -744,7 +725,7 @@
 			}
 			else if(result) // act as simple short conditional operator
 			{
-				value += Structure.evalInstructionSet(this.sub, ctx, data);
+				value += Structure.evaluateInstructionSet(this.sub, ctx, data);
 			}
 		}
 
@@ -780,12 +761,12 @@
 
 	/////////////////////////////////////////
 	// NestedTemplate template node: {{> nestedTemplate}}
-	NodeType.Instruction.NestedTemplate = function(parser){
+	Node.Instruction.NestedTemplate = function(parser){
 		this.name = false;
 		this.ctxSymbol = false;
 		this.parser = parser;
 	};
-	proto = NodeType.Instruction.NestedTemplate.prototype;
+	proto = Node.Instruction.NestedTemplate.prototype;
 	proto.symbol = function(symbol){
 
 		if(this.name === false)
@@ -801,7 +782,7 @@
 			this.parser.showError('Unexpected symbol "'+symbol.value+'"');
 		}
 	};
-	proto.eval = function(ctx, data)
+	proto.evaluate = function(ctx, data)
 	{
 		var value = '';
 
@@ -813,7 +794,7 @@
 				var rData = null;
 				if(this.ctxSymbol !== false)
 				{
-					rData = this.ctxSymbol.eval(ctx, data);
+					rData = this.ctxSymbol.evaluate(ctx, data);
 				}
 				else
 				{
@@ -835,15 +816,15 @@
 
 	/////////////////////////////////////////
 	// conditional operator node: {{#if smth}} ... {{else}} ... {{/if}} or {{if smth}} ... {{elseif anoter}} ... {{else}} ... {{endif}}
-	NodeType.Instruction.IfElse = function(parser){
+	Node.Instruction.IfElse = function(parser){
 		this.branches = [];
 		this.newBranch();
 		this.metElse = false;
 
 		this.parser = parser;
 	};
-	proto = NodeType.Instruction.IfElse.prototype;
-	proto.eval = function(ctx, data)
+	proto = Node.Instruction.IfElse.prototype;
+	proto.evaluate = function(ctx, data)
 	{
 		var value = '';
 
@@ -857,12 +838,12 @@
 			}
 			else
 			{
-				res = br.cond.eval(ctx, data);
+				res = br.cond.evaluate(ctx, data);
 			}
 
 			if(res)
 			{
-				value += Structure.evalInstructionSet(br.ch, ctx, data);
+				value += Structure.evaluateInstructionSet(br.ch, ctx, data);
 				break;
 			}
 		}
@@ -884,7 +865,7 @@
 		}
 		else
 		{
-			lastBr.cond.addArg(symbol);
+			lastBr.cond.addArgument(symbol);
 		}
 	};
 	proto.newBranch = function(){
@@ -929,7 +910,7 @@
 	// structure
 	var Structure = function()
 	{
-		this.current = new NodeType.Instruction();
+		this.current = new Node.Instruction();
 		this.tree = this.current;
 	};
 	proto = Structure.prototype;
@@ -958,10 +939,10 @@
 	{
 		if(type == 'Instruction')
 		{
-			return this.current instanceof NodeType.Instruction;
+			return this.current instanceof Node.Instruction;
 		}
 
-		return this.current instanceof NodeType.Instruction[type];
+		return this.current instanceof Node.Instruction[type];
 	};
 	proto.isExpectable = function(atom)
 	{
@@ -971,12 +952,12 @@
 	{
 		return this.current.atoms(atom);
 	};
-	Structure.evalInstructionSet = function(iSet, ctx, data)
+	Structure.evaluateInstructionSet = function(iSet, ctx, data)
 	{
 		var value = '';
 		for(var k = 0; k < iSet.length; k++)
 		{
-			value += iSet[k].eval(ctx, data);
+			value += iSet[k].evaluate(ctx, data);
 		}
 
 		return value;
