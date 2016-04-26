@@ -1,7 +1,6 @@
 <?
-
 // todo: unite $ctx and $data into a single object, move dereferencePath() to that class (in js too)
-// todo: add exportAtoms() to Node class
+// todo: add exportAtoms() to Node classes
 
 namespace
 {
@@ -39,6 +38,11 @@ namespace
 
 		    return $instance;
         }
+
+		public static function registryGet($name)
+		{
+			return static::$registry[$name];
+		}
 
 		public function getCurrentParseOffset()
 		{
@@ -269,17 +273,19 @@ namespace Horns
 
 	abstract class Node
 	{
-		abstract public function evaluate();
+		protected $parser = null;
 
-		public function append()
+		abstract public function evaluate($ctx, $data);
+
+		public function append($node)
 		{
 		}
 
-		public function symbol()
+		public function symbol(\Horns\Symbol $symbol)
 		{
 		}
 
-		public function get($i)
+		public function get($i = false)
 		{
 		}
 
@@ -291,11 +297,22 @@ namespace Horns
 		{
 			return true;
 		}
+
+		public static function evaluateInstructionSet($iSet, $ctx, $data)
+		{
+			$value = '';
+			$iSetLen = count($iSet);
+			for($k = 0; $k < $iSetLen; $k++)
+			{
+				$value .= $iSet[$k]->evaluate($ctx, $data);
+			}
+
+			return $value;
+		}
 	}
 
     class Structure
     {
-
     }
 
 	class Exception extends \Exception
@@ -347,7 +364,11 @@ namespace Horns
 
 namespace Horns\Node
 {
-	// text node: 'Just some text'
+	/**
+	 * Class Text
+	 * Implements text node: 'Just some text between tags'
+	 * @package Horns\Node
+	 */
 	class Text extends \Horns\Node
 	{
 		private $value = '';
@@ -357,9 +378,222 @@ namespace Horns\Node
 			$this->value = $value;
 		}
 
-		public function evaluate()
+		public function evaluate($ctx, $data)
 		{
 			return $this->value;
+		}
+	}
+
+	/**
+	 * Class Instruction
+	 * Implements instruction tag: {{varName}} or {{{varName}}}
+	 * @package Horns\Node
+	 */
+	class Instruction extends \Horns\Node
+	{
+		private $escape = true;
+		private $sym = null;
+		private $sub = [];
+
+		public function __construct(\Horns $parser, $escape = true)
+		{
+			$this->escape = !!$escape;
+			$this->parser = $parser;
+		}
+
+		public function evaluate($ctx, $data)
+		{
+			$value = '';
+
+			if($this->sym !== null)
+			{
+				$value = $this->sym->evaluate($ctx, $data);
+			}
+
+			$value .= static::evaluateInstructionSet($this->sub, $ctx, $data);
+
+			return $value;
+		}
+
+		public function append($node)
+		{
+			array_push($node, $this->sub);
+		}
+
+		public function symbol(\Horns\Symbol $symbol)
+		{
+			if($this->sym == null)
+			{
+				$this->sym = new \Horns\FnCall($symbol, $this->parser);
+			}
+			else
+			{
+				$this->sym->addArgument($symbol);
+			}
+		}
+
+		public function get($i = false)
+		{
+			if ($i === false)
+			{
+				$i = count($this->sub) - 1;
+			}
+			return $this->sub[$i];
+		}
+	}
+}
+
+namespace Horns\Node\Instruction
+{
+	use Horns\ParseException;
+	use Horns\FnCall;
+
+	/**
+	 * Class LogicLess
+	 * Implements logic-less node: {{#inner}} {{...}} {{/inner}}
+	 * @package Horns\Node\Instruction
+	 */
+	class LogicLess extends \Horns\Node\Instruction
+	{
+		private $sub = []; // sub-instruction set
+		private $condition = null; // conditional function call, it always will be pseudo FnCall
+		private $conditionalSymbol = false; // instruction symbol, i.e. when {{#inner}} met it will be "inner"
+
+		public function evaluate($ctx, $data)
+		{
+			$value = '';
+			if($this->condition === null)
+			{
+				return $value;
+			}
+
+			// calc logic less condition
+			$result = $this->condition->evaluate($ctx, $data);
+			// 1) iterable object or array. then instruction acts as each
+			// 2) other stuff. then act as conditional operator, check if stuff is not falsie and enter\skip sub-instructions
+
+			if($result)
+			{
+				$j = null;
+				$resultKey = 'helper-result-'.floor(rand()*100);
+
+				$iterable = is_array($result);
+				if(!$iterable && is_object($result))
+				{
+					$iterable = in_array('Iterator', class_implements($result));
+				}
+
+				if($iterable) // array or object that supports iteration
+				{
+					$dRef = \Horns\Util::dereferencePath($ctx, $data);
+					$dRef[$resultKey] = $result;
+					array_push($resultKey, $ctx);
+
+					foreach($result as $j => $val)
+					{
+						array_push($j, $ctx);
+						$value .= static::evaluateInstructionSet($this->sub, $ctx, $data);
+						array_pop($ctx);
+					}
+
+					array_pop($ctx);
+					unset($dRef[$resultKey]);
+				}
+				elseif($result) // act as simple short conditional operator
+				{
+					$value .= static::evaluateInstructionSet($this->sub, $ctx, $data);
+				}
+			}
+
+			return $value;
+		}
+
+		public function symbol(\Horns\Symbol $symbol)
+		{
+			if($this->condition == null)
+			{
+				$this->conditionalSymbol = $symbol;
+				$this->condition = new \Horns\FnCall($symbol, $this->parser);
+			}
+			else
+			{
+				throw new ParseException('Unexpected symbol "'.$symbol->getValue().'"', $this->parser);
+			}
+		}
+
+		public function isExpectable(\Horns\Symbol $symbol)
+		{
+			return $this->conditionalSymbol->getValue() == $symbol->getValue(); // ensure that opening tag matches closing tag
+		}
+
+		public function get($i = false)
+		{
+			if(!count($this->sub))
+			{
+				return $this;
+			}
+			else
+			{
+				return $this->sub[count($this->sub) - 1];
+			}
+		}
+	}
+
+	/**
+	 * Class NestedTemplate
+	 * Implements nested template node: {{> templateName}}
+	 * @package Horns\Node\Instruction
+	 */
+	class NestedTemplate extends \Horns\Node\Instruction
+	{
+		private $name = false;
+		private $ctxSymbol = false;
+
+		public function symbol(\Horns\Symbol $symbol)
+		{
+			if($this->name === false)
+			{
+				$this->name = $symbol;
+			}
+			elseif($this->ctxSymbol === false)
+			{
+				$this->ctxSymbol = new FnCall($symbol, $this->parser);
+			}
+			else
+			{
+				throw new ParseException('Unexpected symbol "'.$symbol->getValue().'"', $this->parser);
+			}
+		}
+
+		public function evaluate($ctx, $data)
+		{
+			$value = '';
+
+			if($this->name !== false)
+			{
+				$template = \Horns::registryGet($this->name->getValue());
+				if($template)
+				{
+					$rData = null;
+					if($this->ctxSymbol !== false)
+					{
+						$rData = $this->ctxSymbol->evaluate($ctx, $data);
+					}
+					else
+					{
+						$rData = \Horns\Util::dereferencePath($ctx, $data);
+					}
+
+					$value = $template->get($rData);
+				}
+			}
+
+			return $value;
+		}
+
+		public function get($i = false)
+		{
+			return $this;
 		}
 	}
 }

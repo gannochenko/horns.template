@@ -195,7 +195,7 @@
 
 				if(this.lastAtom() === null)
 				{
-					this.struct.append(new Node.Instruction(this.vars.tag.safe, this)); // add new Instruction to the struct
+					this.struct.append(new Node.Instruction(this, this.vars.tag.safe)); // add new Instruction to the struct
 					this.struct.symbol(spl);
 				}
 				else if(this.lastAtom().atom == 'hash')
@@ -632,7 +632,7 @@
 
 	/////////////////////////////////////////
 	// Instruction node: {{varName}} or {{{varName}}}
-	Node.Instruction = function(escape, parser){
+	Node.Instruction = function(parser, escape){
 		this.escape = !!escape;
 		this.sym = null;
 		this.sub = [];
@@ -651,17 +651,16 @@
 		}
 
 		// call sub Instructions
-		for(var k = 0; k < this.sub.length; k++)
-		{
-			value += this.sub[k].evaluate(ctx, data);
-		}
+		value += Node.Instruction.evaluateInstructionSet(this.sub, ctx, data);
 
 		return value;
 	};
-	proto.append = function(node){
+	proto.append = function(node)
+	{
 		this.sub.push(node);
 	};
-	proto.symbol = function(symbol){
+	proto.symbol = function(symbol)
+	{
 		if(this.sym == null)
 		{
 			this.sym = new FnCall(symbol, this.parser);
@@ -671,7 +670,8 @@
 			this.sym.addArgument(symbol);
 		}
 	};
-	proto.get = function(i){
+	proto.get = function(i)
+	{
 		if(typeof i == 'undefined')
 		{
 			i = this.sub.length - 1;
@@ -682,6 +682,16 @@
 	};
 	proto.isExpectable = function(){
 		return true;
+	};
+	Node.Instruction.evaluateInstructionSet = function(iSet, ctx, data)
+	{
+		var value = '';
+		for(var k = 0; k < iSet.length; k++)
+		{
+			value += iSet[k].evaluate(ctx, data);
+		}
+
+		return value;
 	};
 
 	/////////////////////////////////////////
@@ -695,13 +705,18 @@
 	proto = Node.Instruction.LogicLess.prototype;
 	proto.evaluate = function(ctx, data)
 	{
+		var value = '';
+		if(this.condition === null)
+		{
+			return value;
+		}
+
 		// calc logic less condition
 		var result = this.condition.evaluate(ctx, data);
 		// helper may return the following:
 		// 1) iterable object or array. then instruction acts as each
 		// 2) other stuff. then act as conditional operator, check if stuff is not falsie and enter\skip sub-instructions
 
-		var value = '';
 		if(result)
 		{
 			var j = null;
@@ -716,7 +731,7 @@
 				for(j = 0; j < result.length; j++)
 				{
 					ctx.push(j);
-					value += Structure.evaluateInstructionSet(this.sub, ctx, data);
+					value += Node.Instruction.evaluateInstructionSet(this.sub, ctx, data);
 					ctx.pop();
 				}
 
@@ -725,16 +740,18 @@
 			}
 			else if(result) // act as simple short conditional operator
 			{
-				value += Structure.evaluateInstructionSet(this.sub, ctx, data);
+				value += Node.Instruction.evaluateInstructionSet(this.sub, ctx, data);
 			}
 		}
 
 		return value;
 	};
-	proto.append = function(node){
+	proto.append = function(node)
+	{
 		this.sub.push(node);
 	};
-	proto.symbol = function(symbol){
+	proto.symbol = function(symbol)
+	{
 		if(this.condition == null)
 		{
 			this.conditionalSymbol = symbol;
@@ -742,13 +759,15 @@
 		}
 		else
 		{
-			this.parser.showError('Unexpected symbol "'+symbol.value+'"');
+			this.parser.showError('Unexpected symbol "'+symbol.getValue()+'"');
 		}
 	};
-	proto.isExpectable = function(symbol){
+	proto.isExpectable = function(symbol)
+	{
 		return this.conditionalSymbol.getValue() == symbol.getValue(); // ensure that opening tag matches closing tag
 	};
-	proto.get = function(i){
+	proto.get = function(i)
+	{
 		if(this.sub.length == 0)
 		{
 			return this;
@@ -760,7 +779,7 @@
 	};
 
 	/////////////////////////////////////////
-	// NestedTemplate template node: {{> nestedTemplate}}
+	// NestedTemplate template node: {{> templateName}}
 	Node.Instruction.NestedTemplate = function(parser){
 		this.name = false;
 		this.ctxSymbol = false;
@@ -779,7 +798,7 @@
 		}
 		else
 		{
-			this.parser.showError('Unexpected symbol "'+symbol.value+'"');
+			this.parser.showError('Unexpected symbol "'+symbol.getValue()+'"');
 		}
 	};
 	proto.evaluate = function(ctx, data)
@@ -788,7 +807,7 @@
 
 		if(this.name !== false)
 		{
-			var template = registry[this.name.value];
+			var template = registry[this.name.getValue()];
 			if(template)
 			{
 				var rData = null;
@@ -843,7 +862,7 @@
 
 			if(res)
 			{
-				value += Structure.evaluateInstructionSet(br.ch, ctx, data);
+				value += Node.Instruction.evaluateInstructionSet(br.ch, ctx, data);
 				break;
 			}
 		}
@@ -855,7 +874,7 @@
 	};
 	proto.symbol = function(symbol){
 
-		// todo: check that no symbol can go after 'else' atoms
+		// todo: check that no symbol can go after 'else' atom
 
 		var lastBr = this.getBranch();
 
@@ -951,16 +970,6 @@
 	proto.atoms = function(atom)
 	{
 		return this.current.atoms(atom);
-	};
-	Structure.evaluateInstructionSet = function(iSet, ctx, data)
-	{
-		var value = '';
-		for(var k = 0; k < iSet.length; k++)
-		{
-			value += iSet[k].evaluate(ctx, data);
-		}
-
-		return value;
 	};
 
 	var registry = {};
