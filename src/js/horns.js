@@ -1,5 +1,7 @@
 (function(){
 
+	// todo: remove "vars" variable
+
 	Horns = function(str)
 	{
 		if(typeof str != 'string')
@@ -8,7 +10,6 @@
 		}
 
 		this.str = str; // string to be parsed
-		this.struct = new Structure(); // struct to be built, for further usages
 		this.vars = { // some runtimes
 			tag: false, // flag that indicates whether we are inside {{}} or not
 			at: null, // current atom detected (replace with history)
@@ -227,85 +228,6 @@
 		proto.atomList.push(k);
 	}
 
-	proto.lastAtom = function(found)
-	{
-		if(typeof found == 'undefined')
-		{
-			if(!this.vars.tag.atoms.length)
-			{
-				return null;
-			}
-
-			return this.vars.tag.atoms[this.vars.tag.atoms.length - 1];
-		}
-		else if(found !== null && found !== false && found.atom !== false)
-		{
-			if(this.vars.tag === false) // we must be just left the tag
-			{
-				return;
-			}
-
-			// spaces and brackets are useless, just skip
-			if(found.atom != 'sp' && found.atom != 'io' && found.atom != 'ic' && found.atom != 'iou' && found.atom != 'icu')
-			{
-				this.vars.tag.atoms.push(found);
-			}
-		}
-	};
-	proto.detectAtom = function(i)
-	{
-		var found = false;
-		var all = this.inTag() ? this.atomList : ['iou', 'io'];
-
-		for(var k = 0; k < all.length; k++)
-		{
-			if(all[k].length == 0)
-			{
-				continue;
-			}
-
-			found = this.atoms[all[k]].find.apply(this, [i]);
-			if(found !== false)
-			{
-				break;
-			}
-		}
-
-		var result = {
-			atom: false, // no atoms found
-			value: null,
-			offset: 1 // increase offset by 1
-		};
-
-		if(found === false) // nothing were found
-		{
-			if(this.inTag())
-			{
-				this.showError('Unexpected "'+this.str[i]+'"'); // nowhere to go
-			}
-		}
-		else
-		{
-			result = {
-				atom: 	all[k],
-				value: 	found,
-				offset: found.length // increase offset by atom value length
-			};
-
-			if(Horns.debugMode)
-			{
-				console.dir(result.offset+': '+result.atom+' ('+result.value+')');
-			}
-
-			// check if it was expected
-			if(!this.isExpectable(result))
-			{
-				this.showError('Unexpected "'+result.value+'"');
-			}
-		}
-
-		return result;
-	};
 	proto.showError = function(message)
 	{
 		var i = this.vars.i + 1;
@@ -323,6 +245,8 @@
 	};
 	proto.buildStruct = function()
 	{
+		this.struct = new Structure(this); // struct to be built, for further usages
+
 		if(this.str.length)
 		{
 			var i = 0;
@@ -445,11 +369,6 @@
 			inst = r[1];
 		}
 
-		if(inst === false)
-		{
-			return false;
-		}
-
 		return inst;
 	};
 	proto.testKeyWord = function(i, word)
@@ -474,6 +393,87 @@
 				return typeof this.atoms[lastAtom.atom].syn[found.atom] != 'undefined';
 			}
 		}
+
+		return false;
+	};
+	proto.lastAtom = function(found)
+	{
+		if(typeof found == 'undefined')
+		{
+			if(!this.vars.tag.atoms.length)
+			{
+				return null;
+			}
+
+			return this.vars.tag.atoms[this.vars.tag.atoms.length - 1];
+		}
+		else if(found !== null && found !== false && found.atom !== false)
+		{
+			if(this.vars.tag === false) // we must be just left the tag
+			{
+				return null;
+			}
+
+			// spaces and brackets are useless, just skip
+			if(found.atom != 'sp' && found.atom != 'io' && found.atom != 'ic' && found.atom != 'iou' && found.atom != 'icu')
+			{
+				this.vars.tag.atoms.push(found);
+			}
+		}
+	};
+	proto.detectAtom = function(i)
+	{
+		var found = false;
+		var all = this.inTag() ? this.atomList : ['iou', 'io'];
+
+		for(var k = 0; k < all.length; k++)
+		{
+			if(all[k].length == 0)
+			{
+				continue;
+			}
+
+			found = this.atoms[all[k]].find.apply(this, [i]);
+			if(found !== false)
+			{
+				break;
+			}
+		}
+
+		var result = {
+			atom: false, // no atoms found
+			value: null,
+			offset: 1 // increase offset by 1
+		};
+
+		if(found === false) // nothing were found
+		{
+			if(this.inTag())
+			{
+				this.showError('Unexpected "'+this.str[i]+'"'); // nowhere to go
+			}
+		}
+		else
+		{
+			result = {
+				atom: 	all[k],
+				value: 	found,
+				offset: found.length // increase offset by atom value length
+			};
+
+			if(Horns.debugMode)
+			{
+				console.dir(result.offset+': '+result.atom+' ('+result.value+')');
+			}
+
+			// check if it was expected
+			if(!this.isExpectable(result))
+			{
+				this.showError('Unexpected "'+result.value+'"');
+			}
+		}
+
+		return result;
 	};
 
 	// symbol
@@ -678,7 +678,7 @@
 		}
 		return this.sub[i];
 	};
-	proto.atoms = function(i){
+	proto.atoms = function(){
 	};
 	proto.isExpectable = function(){
 		return true;
@@ -907,9 +907,9 @@
 			return br.ch[br.ch.length - 1];
 		}
 	};
-	proto.isExpectable = function(atom)
+	proto.isExpectable = function(symbol)
 	{
-		if(atom == 'endif')
+		if(symbol == 'endif')
 		{
 			return true;
 		}
@@ -927,9 +927,9 @@
 	};
 
 	// structure
-	var Structure = function()
+	var Structure = function(parser)
 	{
-		this.current = new Node.Instruction();
+		this.current = new Node.Instruction(parser);
 		this.tree = this.current;
 	};
 	proto = Structure.prototype;
@@ -956,20 +956,15 @@
 	};
 	proto.isCurrent = function(type)
 	{
-		if(type == 'Instruction')
-		{
-			return this.current instanceof Node.Instruction;
-		}
-
 		return this.current instanceof Node.Instruction[type];
 	};
-	proto.isExpectable = function(atom)
+	proto.isExpectable = function(symbol)
 	{
-		return this.current.isExpectable(atom);
+		return this.current.isExpectable(symbol);
 	};
-	proto.atoms = function(atom)
+	proto.atoms = function(symbol)
 	{
-		return this.current.atoms(atom);
+		return this.current.atoms(symbol);
 	};
 
 	var registry = {};
