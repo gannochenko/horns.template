@@ -1,8 +1,10 @@
+'use strict';
+
 (function(){
 
 	// todo: remove "vars" variable
 
-	Horns = function(str)
+	window.Horns = function(str)
 	{
 		if(typeof str != 'string')
 		{
@@ -12,7 +14,7 @@
 		this.str = str; // string to be parsed
 		this.vars = { // some runtimes
 			tag: false, // flag that indicates whether we are inside {{}} or not
-			at: null, // current atom detected (replace with history)
+			at: null, // current atom detected (replace with history) // todo: remove
 			i: 0, // current parse position
 			chunk: '', // a currently read part of static segment in template. every time by reaching {{ drops to ''
 			helpers: {} // registered helpers
@@ -47,6 +49,14 @@
 	var proto;
 
 	proto = Horns.prototype;
+
+	// todo: Horns.prototype = {...}
+
+	proto.getAtoms = function()
+	{
+		// todo
+	};
+
 	proto.atoms = {
 		sp: {
 			find: function(i){

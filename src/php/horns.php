@@ -9,6 +9,7 @@ namespace
 	use Horns\Node\Text;
 	use Horns\ParseException;
 	use Horns\Structure;
+	use Horns\Node\Instruction;
 
 	class Horns
     {
@@ -21,6 +22,7 @@ namespace
 
         private static $debugMode = false;
         private static $registry = [];
+		private static $atomList = null;
 
         public function __construct($str)
         {
@@ -28,7 +30,61 @@ namespace
             $this->registerHelper('pseudo', function($arg){return $arg;});
             $this->buildStruct();
         }
-        
+
+		public static function getAtoms()
+		{
+			if(static::$atomList === null)
+			{
+				static::$atomList =
+					Instruction::exportAtoms() +
+					Instruction\LogicLess::exportAtoms() +
+					Instruction\NestedTemplate::exportAtoms() +
+					Instruction\IfElse::exportAtoms() +
+					array(
+						/*
+			 * 		sym: {
+			find: function(i){
+				return this.testSequence(i, Symbol.getRegExp());
+			},
+			do: function(value, i){
+
+				var spl = new Symbol(value, this);
+
+				if(this.lastAtom() === null)
+				{
+					this.struct.append(new Node.Instruction(this, this.vars.tag.safe)); // add new Instruction to the struct
+					this.struct.symbol(spl);
+				}
+				else if(this.lastAtom().atom == 'hash')
+				{
+					var node = new Node.Instruction.LogicLess(this);
+					node.symbol(spl);
+
+					this.struct.forward(node);
+				}
+				else if(this.lastAtom().atom == 'slash')
+				{
+					if(!this.struct.isExpectable(spl))
+					{
+						this.showError('Unexpected "'+value+'"');
+					}
+					this.struct.backward();
+				}
+				else
+				{
+					this.struct.symbol(spl);
+				}
+			},
+			syn: {'ic':true,'icu':true,'sym':true,'sp':true}
+		} // the last option: symbol, with allowed characters list
+			 */
+					)
+				;
+			}
+
+			return static::$atomList;
+		}
+
         public static function compile($str, $name = '')
         {
             $instance = new static($str);
@@ -520,6 +576,11 @@ namespace Horns
 
 			return $value;
 		}
+
+		public static function exportAtoms()
+		{
+			return array();
+		}
 	}
 
     class Structure
@@ -653,7 +714,7 @@ namespace Horns\Node
 
 	/**
 	 * Class Node.Instruction
-	 * Implements instruction tag: {{varName}} or {{{varName}}}
+	 * Implements a single-tag instruction: {{varName}} or {{{varName}}}
 	 * @package Horns\Node
 	 */
 	class Instruction extends \Horns\Node
@@ -706,6 +767,85 @@ namespace Horns\Node
 				$i = count($this->sub) - 1;
 			}
 			return $this->sub[$i];
+		}
+
+		public static function exportAtoms()
+		{
+			return array(
+				sp: {
+			find: function(i){
+				return this.testSequence(i, '\\s');
+			},
+			do: function(){},
+			syn: {'if':true,'elseif':true,'else':true,'endif':true,'io':true,'iou':true,'ic':true,'icu':true,'sym':true}
+		},
+		iou: {
+			find: function(i){
+				return this.testSubString(i, '{{{');
+			},
+			do: function(){
+				this.saveTextChunk();
+				this.inTag(true, false);
+			},
+			syn: {'icu':true,'sym':true,'sp':true},
+		},
+		io: {
+			find: function(i){
+				return this.testSubString(i, '{{');
+			},
+			do: function(){
+				this.saveTextChunk();
+				this.inTag(true, true);
+			},
+			syn: {'hash':true,'slash':true,'NestedTemplate':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
+		},
+		icu: {
+			find: function(i){
+				return this.testSubString(i, '}}}');
+			},
+			do: function()
+			{
+				if(this.vars.tag.safe) // entered to safe, exiting as unsafe?
+				{
+					this.showError('Unexpected "}}}"');
+				}
+
+				this.inTag(false); // going out of the Instruction
+			},
+			syn: {'io':true,'iou':true,'sp':true},
+		},
+		ic: {
+			find: function(i){
+				return this.testSubString(i, '}}');
+			},
+			do: function()
+			{
+				if(!this.vars.tag.safe) // entered to unsafe, exiting as safe?
+				{
+					this.showError('Unexpected "}}"');
+				}
+
+				this.inTag(false); // going out of the Instruction
+			},
+			syn: {'io':true,'iou':true,'sp':true},
+		},
+		hash: {
+			find: function(i){
+				return this.testSubString(i, '#');
+			},
+			do: function(){
+			},
+			syn: {'if':true,'each':true,'sym':true,'sp':true},
+		},
+		slash: {
+			find: function(i){
+				return this.testSubString(i, '/');
+			},
+			do: function(){
+			},
+			syn: {'if':true,'each':true,'sym':true,'sp':true},
+		},
+			);
 		}
 	}
 }
@@ -819,17 +959,12 @@ namespace Horns\Node\Instruction
 
 		public function symbol(Symbol $symbol)
 		{
-			if($this->name === false)
-			{
+			if ($this->name === false) {
 				$this->name = $symbol;
-			}
-			elseif($this->ctxSymbol === false)
-			{
+			} elseif ($this->ctxSymbol === false) {
 				$this->ctxSymbol = new FnCall($symbol, $this->parser);
-			}
-			else
-			{
-				throw new ParseException('Unexpected symbol "'.$symbol->getValue().'"', $this->parser);
+			} else {
+				throw new ParseException('Unexpected symbol "' . $symbol->getValue() . '"', $this->parser);
 			}
 		}
 
@@ -837,18 +972,13 @@ namespace Horns\Node\Instruction
 		{
 			$value = '';
 
-			if($this->name !== false)
-			{
+			if ($this->name !== false) {
 				$template = \Horns::registryGet($this->name->getValue());
-				if($template)
-				{
+				if ($template) {
 					$rData = null;
-					if($this->ctxSymbol !== false)
-					{
+					if ($this->ctxSymbol !== false) {
 						$rData = $this->ctxSymbol->evaluate($ctx, $data);
-					}
-					else
-					{
+					} else {
 						$rData = \Horns\Util::dereferencePath($ctx, $data);
 					}
 
@@ -862,6 +992,21 @@ namespace Horns\Node\Instruction
 		public function get($i = false)
 		{
 			return $this;
+		}
+
+		public static function exportAtoms()
+		{
+			return array(
+				NestedTemplate: {
+			find: function(i){
+				return this.testSubString(i, '>');
+			},
+			do: function(){
+				this.struct.append(new Node.Instruction.NestedTemplate(this));
+			},
+			syn: {'sym':true,'sp':true}
+		},
+			);
 		}
 	}
 
@@ -970,6 +1115,68 @@ namespace Horns\Node\Instruction
 			{
 				$this->metElse = true;
 			}
+		}
+
+		public static function exportAtoms()
+		{
+			return array(
+				'if': {
+			find: function(i){
+				return this.testKeyWord(i, 'if');
+			},
+			do: function()
+			{
+				if(this.lastAtom() !== null && this.lastAtom().atom == 'slash')
+				{
+					this.atoms.endif.do.apply(this); // "\if" is treated as "endif"
+				}
+				else
+				{
+					this.struct.forward(new Node.Instruction.IfElse(this));
+				}
+			},
+			syn: {'ic':true, 'sym':true,'sp':true},
+		},
+		elseif: {
+			find: function(i){
+				return this.testKeyWord(i, 'elseif');
+			},
+			do: function(){
+				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('elseif'))
+				{
+					this.showError('Unexpected "elseif"');
+				}
+				this.struct.atoms('elseif');
+			},
+			syn: {'sym':true,'sp':true},
+		},
+		'else': {
+			find: function(i){
+				return this.testKeyWord(i, 'else');
+			},
+			do: function(){
+				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('else'))
+				{
+					this.showError('Unexpected "else"');
+				}
+				this.struct.atoms('else');
+			},
+			syn: {'ic':true,'sp':true},
+		},
+		endif: {
+			find: function(i){
+				return this.testKeyWord(i, 'endif');
+			},
+			do: function(){
+				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('endif'))
+				{
+					this.showError('Unexpected "endif"');
+				}
+				this.struct.backward();
+			},
+			syn: {'ic':true,'sp':true}
+		},
+			);
 		}
 	}
 }
