@@ -41,43 +41,8 @@ namespace
 					Instruction\NestedTemplate::exportAtoms() +
 					Instruction\IfElse::exportAtoms() +
 					array(
-						/*
-			 * 		sym: {
-			find: function(i){
-				return this.testSequence(i, Symbol.getRegExp());
-			},
-			do: function(value, i){
-
-				var spl = new Symbol(value, this);
-
-				if(this.lastAtom() === null)
-				{
-					this.struct.append(new Node.Instruction(this, this.vars.tag.safe)); // add new Instruction to the struct
-					this.struct.symbol(spl);
-				}
-				else if(this.lastAtom().atom == 'hash')
-				{
-					var node = new Node.Instruction.LogicLess(this);
-					node.symbol(spl);
-
-					this.struct.forward(node);
-				}
-				else if(this.lastAtom().atom == 'slash')
-				{
-					if(!this.struct.isExpectable(spl))
-					{
-						this.showError('Unexpected "'+value+'"');
-					}
-					this.struct.backward();
-				}
-				else
-				{
-					this.struct.symbol(spl);
-				}
-			},
-			syn: {'ic':true,'icu':true,'sym':true,'sp':true}
-		} // the last option: symbol, with allowed characters list
-			 */
+						// the last option: symbol, with allowed characters list
+						'\Horns\Atom\Symbol',
 					)
 				;
 			}
@@ -113,6 +78,19 @@ namespace
 			return $this->str;
 		}
 
+		/**
+		 * @return \Horns\Structure
+		 */
+		public function getStructure()
+		{
+			return $this->struct;
+		}
+
+		public function getTag()
+		{
+			return $this->tag;
+		}
+
 		public function registerHelper($name, $cb)
 		{
 			$name = trim((string) $name);
@@ -142,7 +120,7 @@ namespace
 			//return this.parser.vars.helpers[this.name].apply(Util.dereferencePath(ctx, data), hArgs);
 		}
 
-	    private function showError($message)
+	    public function showError($message)
 		{
 			throw new ParseException($message, $this);
 		}
@@ -233,35 +211,6 @@ namespace
 			$this->chunk += $this->str[$i];
 		}
 
-		// test if this.str has substring that equals to str at position i
-		public function testSubString($i, $str)
-		{
-			if(substr($this->str, $i, strlen($str)) == $str)
-			{
-				return $str;
-			}
-			return false;
-		}
-
-		// test if a substring of this.str that starts from i matches a given regular expression. if match, return it
-		public function testSequence($i, $expr)
-		{
-			$inst = false;
-			$subStr = substr($this->str, $i, strlen($this->str) - $i);
-			$r = [];
-			if(preg_match('#^('.$expr.'+)#', $subStr, $r))
-			{
-				$inst = $r[1];
-			}
-
-			return $inst;
-		}
-
-		public function testKeyWord($i, $word)
-		{
-			return $this->testSequence($i, $word.'(\\s+|\}\}|\$)') ? $word : false;
-		}
-
 		public function isExpectable($found)
 		{
 			if(!$this->inTag())
@@ -285,7 +234,7 @@ namespace
 			return false;
 		}
 
-		private function lastAtom($found = null)
+		public function lastAtom($found = null)
 		{
 			if($found != null)
 			{
@@ -374,6 +323,26 @@ namespace Horns
 {
 	use Horns\Node\Instruction;
 
+	abstract class Atom
+	{
+		public static function find($i, \Horns $parser)
+		{
+			return '';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+		}
+
+		/**
+		 * Return a list of allowed following atoms
+		 */
+		public static function getNextPossible()
+		{
+			return array();
+		}
+	}
+
 	class Symbol
 	{
 		private $parser = null;
@@ -458,7 +427,7 @@ namespace Horns
 			return $result;
 		}
 
-		private static function getRegExp()
+		public static function getRegExp()
 		{
 			return '(\.\./)*([a-zA-Z0-9_\\.]+)';
 		}
@@ -683,6 +652,93 @@ namespace Horns
 			}
 
 			return $val;
+		}
+
+		// test if this.str has substring that equals to str at position i
+		public static function testSubString($hayStack, $i, $str)
+		{
+			if(substr($hayStack, $i, strlen($str)) == $str)
+			{
+				return $str;
+			}
+			return false;
+		}
+
+		// test if a substring of this.str that starts from i matches a given regular expression. if match, return it
+		public static function testSequence($hayStack, $i, $expr)
+		{
+			$inst = false;
+			$subStr = substr($hayStack, $i, strlen($hayStack) - $i);
+			$r = [];
+			if(preg_match('#^('.$expr.'+)#', $subStr, $r))
+			{
+				$inst = $r[1];
+			}
+
+			return $inst;
+		}
+
+		public static function testKeyWord($hayStack, $i, $word)
+		{
+			return static::testSequence($hayStack, $i, $word.'(\\s+|\}\}|\$)') ? $word : false;
+		}
+	}
+}
+
+namespace Horns\Atom
+{
+	use Horns\Util;
+	use Horns\Node\Instruction;
+
+	final class Symbol extends \Horns\Atom
+	{
+		public static function find($i, \Horns $parser)
+		{
+			return Util::testSubString($parser->getTemplateString(), $i, \Horns\Symbol::getRegExp());
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			$spl = new \Horns\Symbol($value, $parser);
+
+			if($parser->lastAtom() === null)
+			{
+				$tag = $parser->getTag();
+
+				$node = new Instruction($parser, $tag['safe']);
+
+				$parser->getStructure()->append($node); // add new Instruction to the struct
+				$parser->getStructure()->symbol($spl); // todo: just $node->symbol($spl) ?
+			}
+			else
+			{
+				$lastAtom = $parser->lastAtom();
+				if($lastAtom['atom'] == 'hash')
+				{
+					$node = new Instruction\LogicLess($parser);
+					$node->symbol($spl);
+
+					$parser->getStructure()->forward($node);
+				}
+				elseif($lastAtom['atom'] == 'slash')
+				{
+					if(!$parser->getStructure()->isExpectable($spl))
+					{
+						$parser->showError('Unexpected "'.$value.'"');
+					}
+					$parser->getStructure()->backward();
+				}
+				else
+				{
+					$parser->getStructure()->symbol($spl);
+				}
+			}
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array('ic' => true, 'icu' => true, 'sym' => true, 'sp' => true);
 		}
 	}
 }

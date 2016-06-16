@@ -57,11 +57,13 @@
 		// todo
 	};
 
+	// todo: move to to getAtoms()
 	proto.atoms = {
 		sp: {
 			find: function(i){
 				return this.testSequence(i, '\\s');
 			},
+			// todo: for each "do": rename to append(), because "do" is a reserved word
 			do: function(){},
 			syn: {'if':true,'elseif':true,'else':true,'endif':true,'io':true,'iou':true,'ic':true,'icu':true,'sym':true}
 		},
@@ -73,7 +75,7 @@
 				this.saveTextChunk();
 				this.inTag(true, false);
 			},
-			syn: {'icu':true,'sym':true,'sp':true},
+			syn: {'icu':true,'sym':true,'sp':true}
 		},
 		io: {
 			find: function(i){
@@ -98,7 +100,7 @@
 
 				this.inTag(false); // going out of the Instruction
 			},
-			syn: {'io':true,'iou':true,'sp':true},
+			syn: {'io':true,'iou':true,'sp':true}
 		},
 		ic: {
 			find: function(i){
@@ -113,7 +115,7 @@
 
 				this.inTag(false); // going out of the Instruction
 			},
-			syn: {'io':true,'iou':true,'sp':true},
+			syn: {'io':true,'iou':true,'sp':true}
 		},
 		hash: {
 			find: function(i){
@@ -155,7 +157,7 @@
 					this.struct.forward(new Node.Instruction.IfElse(this));
 				}
 			},
-			syn: {'ic':true, 'sym':true,'sp':true},
+			syn: {'ic':true, 'sym':true,'sp':true}
 		},
 		elseif: {
 			find: function(i){
@@ -168,7 +170,7 @@
 				}
 				this.struct.atoms('elseif');
 			},
-			syn: {'sym':true,'sp':true},
+			syn: {'sym':true,'sp':true}
 		},
 		'else': {
 			find: function(i){
@@ -181,7 +183,7 @@
 				}
 				this.struct.atoms('else');
 			},
-			syn: {'ic':true,'sp':true},
+			syn: {'ic':true,'sp':true}
 		},
 		endif: {
 			find: function(i){
@@ -361,6 +363,7 @@
 		this.vars.chunk += this.str[i];
 	};
 	// test if this.str has substring that equals to str at position i
+	// todo: move to Util
 	proto.testSubString = function(i, str)
 	{
 		if(this.str.substr(i, str.length) == str)
@@ -370,6 +373,7 @@
 		return false;
 	};
 	// test if a substring of this.str that starts from i matches a given regular expression. if match, return it
+	// todo: move to Util
 	proto.testSequence = function(i, expr)
 	{
 		var inst = false;
@@ -381,6 +385,7 @@
 
 		return inst;
 	};
+	// todo: move to Util
 	proto.testKeyWord = function(i, word)
 	{
 		return this.testSequence(i, word+'(\\s+|\}\}|\$)') ? word : false;
