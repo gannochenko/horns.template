@@ -15,7 +15,7 @@ namespace
     {
         private $str =        '';
         private $struct =     null;
-        private $tag =        false;
+        private $tag =        false; // todo: move to class, not array
         private $i =          0;
         private $chunk =      '';
         private $helpers =    [];
@@ -42,7 +42,7 @@ namespace
 					Instruction\IfElse::exportAtoms() +
 					array(
 						// the last option: symbol, with allowed characters list
-						'\Horns\Atom\Symbol',
+						'sym' => '\\Horns\\Atom\\Symbol',
 					)
 				;
 			}
@@ -174,7 +174,7 @@ namespace
 			return $this->struct->tree->evaluate([], $obj);
         }
 
-	    private function inTag($change = false, $safe = false)
+		public function inTag($change = false, $safe = false)
 		{
 			if($change)
 			{
@@ -197,7 +197,7 @@ namespace
 			//return this.atoms[found.atom].do.apply(this, [found.value, this.vars.i, found.offset]);
 		}
 
-		private function saveTextChunk()
+		public function saveTextChunk()
 		{
 			if($this->chunk != '')
 			{
@@ -685,64 +685,6 @@ namespace Horns
 	}
 }
 
-namespace Horns\Atom
-{
-	use Horns\Util;
-	use Horns\Node\Instruction;
-
-	final class Symbol extends \Horns\Atom
-	{
-		public static function find($i, \Horns $parser)
-		{
-			return Util::testSubString($parser->getTemplateString(), $i, \Horns\Symbol::getRegExp());
-		}
-
-		public static function append($value, $i, \Horns $parser)
-		{
-			$spl = new \Horns\Symbol($value, $parser);
-
-			if($parser->lastAtom() === null)
-			{
-				$tag = $parser->getTag();
-
-				$node = new Instruction($parser, $tag['safe']);
-
-				$parser->getStructure()->append($node); // add new Instruction to the struct
-				$parser->getStructure()->symbol($spl); // todo: just $node->symbol($spl) ?
-			}
-			else
-			{
-				$lastAtom = $parser->lastAtom();
-				if($lastAtom['atom'] == 'hash')
-				{
-					$node = new Instruction\LogicLess($parser);
-					$node->symbol($spl);
-
-					$parser->getStructure()->forward($node);
-				}
-				elseif($lastAtom['atom'] == 'slash')
-				{
-					if(!$parser->getStructure()->isExpectable($spl))
-					{
-						$parser->showError('Unexpected "'.$value.'"');
-					}
-					$parser->getStructure()->backward();
-				}
-				else
-				{
-					$parser->getStructure()->symbol($spl);
-				}
-			}
-		}
-
-		public static function getNextPossible()
-		{
-			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
-			return array('ic' => true, 'icu' => true, 'sym' => true, 'sp' => true);
-		}
-	}
-}
-
 namespace Horns\Node
 {
 	use Horns\FnCall;
@@ -827,80 +769,15 @@ namespace Horns\Node
 
 		public static function exportAtoms()
 		{
+			// do not reorder
 			return array(
-				sp: {
-			find: function(i){
-				return this.testSequence(i, '\\s');
-			},
-			do: function(){},
-			syn: {'if':true,'elseif':true,'else':true,'endif':true,'io':true,'iou':true,'ic':true,'icu':true,'sym':true}
-		},
-		iou: {
-			find: function(i){
-				return this.testSubString(i, '{{{');
-			},
-			do: function(){
-				this.saveTextChunk();
-				this.inTag(true, false);
-			},
-			syn: {'icu':true,'sym':true,'sp':true},
-		},
-		io: {
-			find: function(i){
-				return this.testSubString(i, '{{');
-			},
-			do: function(){
-				this.saveTextChunk();
-				this.inTag(true, true);
-			},
-			syn: {'hash':true,'slash':true,'NestedTemplate':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
-		},
-		icu: {
-			find: function(i){
-				return this.testSubString(i, '}}}');
-			},
-			do: function()
-			{
-				if(this.vars.tag.safe) // entered to safe, exiting as unsafe?
-				{
-					this.showError('Unexpected "}}}"');
-				}
-
-				this.inTag(false); // going out of the Instruction
-			},
-			syn: {'io':true,'iou':true,'sp':true},
-		},
-		ic: {
-			find: function(i){
-				return this.testSubString(i, '}}');
-			},
-			do: function()
-			{
-				if(!this.vars.tag.safe) // entered to unsafe, exiting as safe?
-				{
-					this.showError('Unexpected "}}"');
-				}
-
-				this.inTag(false); // going out of the Instruction
-			},
-			syn: {'io':true,'iou':true,'sp':true},
-		},
-		hash: {
-			find: function(i){
-				return this.testSubString(i, '#');
-			},
-			do: function(){
-			},
-			syn: {'if':true,'each':true,'sym':true,'sp':true},
-		},
-		slash: {
-			find: function(i){
-				return this.testSubString(i, '/');
-			},
-			do: function(){
-			},
-			syn: {'if':true,'each':true,'sym':true,'sp':true},
-		},
+				'sp' => '\\Horns\\Atom\\Space',
+				'iou' => '\\Horns\\Atom\\TagOpenUnsafe',
+				'io' => '\\Horns\\Atom\\TagOpen',
+				'icu' => '\\Horns\\Atom\\TagCloseUnsafe',
+				'ic' => '\\Horns\\Atom\\TagClose',
+				'hash' => '\\Horns\\Atom\\Hash',
+				'slash' => '\\Horns\\Atom\\Slash',
 			);
 		}
 	}
@@ -1053,15 +930,7 @@ namespace Horns\Node\Instruction
 		public static function exportAtoms()
 		{
 			return array(
-				NestedTemplate: {
-			find: function(i){
-				return this.testSubString(i, '>');
-			},
-			do: function(){
-				this.struct.append(new Node.Instruction.NestedTemplate(this));
-			},
-			syn: {'sym':true,'sp':true}
-		},
+				'NestedTemplate' => '\\Horns\\Atoms\\TemplateInclude',
 			);
 		}
 	}
@@ -1176,23 +1045,12 @@ namespace Horns\Node\Instruction
 		public static function exportAtoms()
 		{
 			return array(
-				'if': {
-			find: function(i){
-				return this.testKeyWord(i, 'if');
-			},
-			do: function()
-			{
-				if(this.lastAtom() !== null && this.lastAtom().atom == 'slash')
-				{
-					this.atoms.endif.do.apply(this); // "\if" is treated as "endif"
-				}
-				else
-				{
-					this.struct.forward(new Node.Instruction.IfElse(this));
-				}
-			},
-			syn: {'ic':true, 'sym':true,'sp':true},
-		},
+				'if' => '\\Horns\\Atom\\If_',
+				'elseif' => '\\Horns\\Atom\\ElseIf_',
+				'else' => '\\Horns\\Atom\\Else_',
+				'endif' => '\\Horns\\Atom\\EndIf_',
+
+
 		elseif: {
 			find: function(i){
 				return this.testKeyWord(i, 'elseif');
@@ -1232,6 +1090,276 @@ namespace Horns\Node\Instruction
 			},
 			syn: {'ic':true,'sp':true}
 		},
+			);
+		}
+	}
+}
+
+namespace Horns\Atom
+{
+	use Horns\Util;
+	use Horns\Node\Instruction;
+
+	final class Symbol extends \Horns\Atom
+	{
+		public static function find($i, \Horns $parser)
+		{
+			return Util::testSubString($parser->getTemplateString(), $i, \Horns\Symbol::getRegExp());
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			$spl = new \Horns\Symbol($value, $parser);
+
+			if($parser->lastAtom() === null)
+			{
+				$tag = $parser->getTag();
+
+				$node = new Instruction($parser, $tag['safe']);
+
+				$parser->getStructure()->append($node); // add new Instruction to the struct
+				$parser->getStructure()->symbol($spl); // todo: just $node->symbol($spl) ?
+			}
+			else
+			{
+				$lastAtom = $parser->lastAtom();
+				if($lastAtom['atom'] == 'hash')
+				{
+					$node = new Instruction\LogicLess($parser);
+					$node->symbol($spl);
+
+					$parser->getStructure()->forward($node);
+				}
+				elseif($lastAtom['atom'] == 'slash')
+				{
+					if(!$parser->getStructure()->isExpectable($spl))
+					{
+						$parser->showError('Unexpected "'.$value.'"');
+					}
+					$parser->getStructure()->backward();
+				}
+				else
+				{
+					$parser->getStructure()->symbol($spl);
+				}
+			}
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array('ic' => true, 'icu' => true, 'sym' => true, 'sp' => true);
+		}
+	}
+
+	final class Space extends \Horns\Atom
+	{
+		public static function find($i, \Horns $parser)
+		{
+			return Util::testSequence($parser->getTemplateString(), $i, '\\s');
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'if' => true, 'elseif' => true, 'else' => true, 'endif' => true,
+				'io' => true, 'iou' => true, 'ic' => true, 'icu' => true, 'sym' => true
+			);
+		}
+	}
+
+	abstract class Constant extends \Horns\Atom
+	{
+		public static function getSequence()
+		{
+			return '';
+		}
+
+		public static function find($i, \Horns $parser)
+		{
+			return Util::testSubString($parser->getTemplateString(), $i, static::getSequence());
+		}
+	}
+
+	final class TagOpen extends \Horns\Atom\Constant
+	{
+		public static function getSequence()
+		{
+			return '{{';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			$parser->saveTextChunk(); // todo: move this inside inTag()
+			$parser->inTag(true, true);
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'hash' => true, 'slash' => true, 'NestedTemplate' => true, 'if' => true, 'elseif' => true, 'else' => true,
+				'endif' => true, 'ic' => true, 'sym' => true, 'sp' => true,
+			);
+		}
+	}
+
+	final class TagClose extends \Horns\Atom\Constant
+	{
+		public static function getSequence()
+		{
+			return '}}';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			$tag = $parser->getTag();
+
+			if(!$tag['safe']) // entered to unsafe, exiting as safe?
+			{
+				$parser->showError('Unexpected "'.static::getSequence().'"');
+			}
+
+			$parser->inTag(false); // going out of the Instruction
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'io' => true, 'iou' => true, 'sp' => true,
+			);
+		}
+	}
+
+	final class TagOpenUnsafe extends \Horns\Atom\Constant
+	{
+		public static function getSequence()
+		{
+			return '{{{';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			$parser->saveTextChunk(); // todo: move this inside inTag()
+			$parser->inTag(true, false);
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'icu' => true, 'sym' => true, 'sp' => true
+			);
+		}
+	}
+
+	final class TagCloseUnsafe extends \Horns\Atom\Constant
+	{
+		public static function getSequence()
+		{
+			return '}}}';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			$tag = $parser->getTag();
+
+			if($tag['safe']) // entered to safe, exiting as unsafe?
+			{
+				$parser->showError('Unexpected "'.static::getSequence().'"');
+			}
+
+			$parser->inTag(false); // going out of the Instruction
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'io' => true, 'iou' => true, 'sp' => true,
+			);
+		}
+	}
+
+	final class Hash extends \Horns\Atom\Constant
+	{
+		public static function getSequence()
+		{
+			return '#';
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'if' => true, 'each' => true, 'sym' => true, 'sp' => true
+			);
+		}
+	}
+
+	final class Slash extends \Horns\Atom\Constant
+	{
+		public static function getSequence()
+		{
+			return '//';
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'if' => true, 'each' => true, 'sym' => true, 'sp' => true
+			);
+		}
+	}
+
+	final class TemplateInclude extends \Horns\Atom\Constant
+	{
+		public static function getSequence()
+		{
+			return '>';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			$parser->getStructure()->append(new \Horns\Node\Instruction\NestedTemplate($parser));
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'sym' => true, 'sp' => true
+			);
+		}
+	}
+	
+	final class If_ extends \Horns\Atom\Constant
+	{
+		public static function getSequence()
+		{
+			return 'if';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			if(this.lastAtom() !== null && this.lastAtom().atom == 'slash')
+			{
+				this.atoms.endif.do.apply(this); // "\if" is treated as "endif"
+				}
+			else
+			{
+				this.struct.forward(new Node.Instruction.IfElse(this));
+			}
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'ic' => true, 'sym' => true,  'sp' => true
 			);
 		}
 	}
