@@ -260,62 +260,67 @@ namespace
 			}
 		}
 
-		/*
-	proto.detectAtom = function(i)
-	{
-		var found = false;
-		var all = this.inTag() ? this.atomList : ['iou', 'io'];
-
-		for(var k = 0; k < all.length; k++)
+		public function detectAtom($i)
 		{
-			if(all[k].length == 0)
+			$found = false;
+			$atomMap = $this->getAtoms();
+			$all = $this->inTag() ? array_keys($atomMap) : ['iou', 'io'];
+			$cntAll = count($all);
+
+			for($k = 0; $k < $cntAll; $k++)
 			{
-				continue;
+				if(!count($all[$k]))
+				{
+					continue;
+				}
+
+				$atomClass = $atomMap[$all[$k]];
+
+				$found = $atomClass::find($i, $this);
+				if($found !== false)
+				{
+					break;
+				}
 			}
 
-			found = this.atoms[all[k]].find.apply(this, [i]);
-			if(found !== false)
+			// todo: object is required here
+			$result = array(
+				'atom' => false, // no atoms found
+				'value' => null,
+				'offset' => 1 // increase offset by 1
+			);
+
+			if($found === false) // nothing were found
 			{
-				break;
+				if($this->inTag())
+				{
+					$this->showError('Unexpected "'.$this->getTemplateString()[$i].'"'); // nowhere to go
+				}
 			}
+			else
+			{
+				$result = array(
+					'atom' => 	$all[$k],
+					'value' => 	$found,
+					'offset' => strlen($found) // increase offset by atom value length
+				);
+
+				/*
+				if(Horns.debugMode)
+				{
+					console.dir(result.offset+': '+result.atom+' ('+result.value+')');
+				}
+				*/
+
+				// check if it was expected
+				if(!$this->isExpectable($result))
+				{
+					$this->showError('Unexpected "'.$result['value'].'"');
+				}
+			}
+
+			return $result;
 		}
-
-		var result = {
-		atom: false, // no atoms found
-			value: null,
-			offset: 1 // increase offset by 1
-		};
-
-		if(found === false) // nothing were found
-		{
-			if(this.inTag())
-			{
-				this.showError('Unexpected "'+this.str[i]+'"'); // nowhere to go
-			}
-		}
-		else
-		{
-			result = {
-			atom: 	all[k],
-				value: 	found,
-				offset: found.length // increase offset by atom value length
-			};
-
-			if(Horns.debugMode)
-			{
-				console.dir(result.offset+': '+result.atom+' ('+result.value+')');
-			}
-
-			// check if it was expected
-			if(!this.isExpectable(result))
-			{
-				this.showError('Unexpected "'+result.value+'"');
-			}
-		}
-
-		return result;
-	};
-		*/
     }
 }
 
@@ -788,13 +793,14 @@ namespace Horns\Node\Instruction
 	use Horns\ParseException;
 	use Horns\FnCall;
 	use Horns\Symbol;
+	use Horns\Node\Instruction;
 
 	/**
 	 * Class Node.Instruction.LogicLess
 	 * Implements logic-less node: {{#inner}} {{...}} {{/inner}}
 	 * @package Horns\Node\Instruction
 	 */
-	class LogicLess extends \Horns\Node\Instruction
+	class LogicLess extends Instruction
 	{
 		private $sub = []; // sub-instruction set
 		private $condition = null; // conditional function call, it always will be pseudo FnCall
@@ -885,7 +891,7 @@ namespace Horns\Node\Instruction
 	 * Implements nested template node: {{> templateName}}
 	 * @package Horns\Node\Instruction
 	 */
-	class NestedTemplate extends \Horns\Node\Instruction
+	class NestedTemplate extends Instruction
 	{
 		private $name = false;
 		private $ctxSymbol = false;
@@ -941,7 +947,7 @@ namespace Horns\Node\Instruction
 	 *  {{#if smth}} ... {{else}} ... {{/if}} or {{if smth}} ... {{elseif anoter}} ... {{else}} ... {{endif}}
 	 * @package Horns\Node\Instruction
 	 */
-	class IfElse extends \Horns\Node\Instruction
+	class IfElse extends Instruction
 	{
 		private $branches = [];
 		private $metElse = false;
@@ -1049,47 +1055,6 @@ namespace Horns\Node\Instruction
 				'elseif' => '\\Horns\\Atom\\ElseIf_',
 				'else' => '\\Horns\\Atom\\Else_',
 				'endif' => '\\Horns\\Atom\\EndIf_',
-
-
-		elseif: {
-			find: function(i){
-				return this.testKeyWord(i, 'elseif');
-			},
-			do: function(){
-				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('elseif'))
-				{
-					this.showError('Unexpected "elseif"');
-				}
-				this.struct.atoms('elseif');
-			},
-			syn: {'sym':true,'sp':true},
-		},
-		'else': {
-			find: function(i){
-				return this.testKeyWord(i, 'else');
-			},
-			do: function(){
-				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('else'))
-				{
-					this.showError('Unexpected "else"');
-				}
-				this.struct.atoms('else');
-			},
-			syn: {'ic':true,'sp':true},
-		},
-		endif: {
-			find: function(i){
-				return this.testKeyWord(i, 'endif');
-			},
-			do: function(){
-				if(!this.struct.isCurrent('IfElse') || !this.struct.isExpectable('endif'))
-				{
-					this.showError('Unexpected "endif"');
-				}
-				this.struct.backward();
-			},
-			syn: {'ic':true,'sp':true}
-		},
 			);
 		}
 	}
@@ -1099,8 +1064,9 @@ namespace Horns\Atom
 {
 	use Horns\Util;
 	use Horns\Node\Instruction;
+	use Horns\Atom;
 
-	final class Symbol extends \Horns\Atom
+	final class Symbol extends Atom
 	{
 		public static function find($i, \Horns $parser)
 		{
@@ -1152,7 +1118,7 @@ namespace Horns\Atom
 		}
 	}
 
-	final class Space extends \Horns\Atom
+	final class Space extends Atom
 	{
 		public static function find($i, \Horns $parser)
 		{
@@ -1169,7 +1135,7 @@ namespace Horns\Atom
 		}
 	}
 
-	abstract class Constant extends \Horns\Atom
+	abstract class Constant extends Atom
 	{
 		public static function getSequence()
 		{
@@ -1182,7 +1148,7 @@ namespace Horns\Atom
 		}
 	}
 
-	final class TagOpen extends \Horns\Atom\Constant
+	final class TagOpen extends Constant
 	{
 		public static function getSequence()
 		{
@@ -1205,7 +1171,7 @@ namespace Horns\Atom
 		}
 	}
 
-	final class TagClose extends \Horns\Atom\Constant
+	final class TagClose extends Constant
 	{
 		public static function getSequence()
 		{
@@ -1233,7 +1199,7 @@ namespace Horns\Atom
 		}
 	}
 
-	final class TagOpenUnsafe extends \Horns\Atom\Constant
+	final class TagOpenUnsafe extends Constant
 	{
 		public static function getSequence()
 		{
@@ -1255,7 +1221,7 @@ namespace Horns\Atom
 		}
 	}
 
-	final class TagCloseUnsafe extends \Horns\Atom\Constant
+	final class TagCloseUnsafe extends Constant
 	{
 		public static function getSequence()
 		{
@@ -1283,7 +1249,7 @@ namespace Horns\Atom
 		}
 	}
 
-	final class Hash extends \Horns\Atom\Constant
+	final class Hash extends Constant
 	{
 		public static function getSequence()
 		{
@@ -1299,7 +1265,7 @@ namespace Horns\Atom
 		}
 	}
 
-	final class Slash extends \Horns\Atom\Constant
+	final class Slash extends Constant
 	{
 		public static function getSequence()
 		{
@@ -1315,7 +1281,7 @@ namespace Horns\Atom
 		}
 	}
 
-	final class TemplateInclude extends \Horns\Atom\Constant
+	final class TemplateInclude extends Constant
 	{
 		public static function getSequence()
 		{
@@ -1324,7 +1290,7 @@ namespace Horns\Atom
 
 		public static function append($value, $i, \Horns $parser)
 		{
-			$parser->getStructure()->append(new \Horns\Node\Instruction\NestedTemplate($parser));
+			$parser->getStructure()->append(new Instruction\NestedTemplate($parser));
 		}
 
 		public static function getNextPossible()
@@ -1336,7 +1302,7 @@ namespace Horns\Atom
 		}
 	}
 	
-	final class If_ extends \Horns\Atom\Constant
+	final class If_ extends Constant
 	{
 		public static function getSequence()
 		{
@@ -1345,13 +1311,15 @@ namespace Horns\Atom
 
 		public static function append($value, $i, \Horns $parser)
 		{
-			if(this.lastAtom() !== null && this.lastAtom().atom == 'slash')
+			$lastAtom = $parser->lastAtom();
+
+			if($lastAtom !== null && $lastAtom['atom'] == 'slash')
 			{
-				this.atoms.endif.do.apply(this); // "\if" is treated as "endif"
-				}
+				EndIf_::append($value, $i, $parser); // "\if" is treated as "endif"
+			}
 			else
 			{
-				this.struct.forward(new Node.Instruction.IfElse(this));
+				$parser->getStructure()->forward(new Instruction\IfElse($parser));
 			}
 		}
 
@@ -1360,6 +1328,81 @@ namespace Horns\Atom
 			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
 			return array(
 				'ic' => true, 'sym' => true,  'sp' => true
+			);
+		}
+	}
+
+	final class EndIf_ extends Constant
+	{
+		public static function getSequence()
+		{
+			return 'endif';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			if(!$parser->getStructure()->isCurrent('IfElse') || !$parser->getStructure()->isExpectable('endif'))
+			{
+				$parser->showError('Unexpected "endif"');
+			}
+			$parser->getStructure()->backward();
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'ic' => true, 'sp' => true
+			);
+		}
+	}
+
+	final class ElseIf_ extends Constant
+	{
+		public static function getSequence()
+		{
+			return 'elseif';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			if(!$parser->getStructure()->isCurrent('IfElse') || !$parser->getStructure()->isExpectable('elseif'))
+			{
+				$parser->showError('Unexpected "elseif"');
+			}
+			$parser->getStructure()->backward();
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'sym' => true, 'sp' => true
+			);
+		}
+	}
+
+	final class Else_ extends Constant
+	{
+		public static function getSequence()
+		{
+			return 'else';
+		}
+
+		public static function append($value, $i, \Horns $parser)
+		{
+			if(!$parser->getStructure()->isCurrent('IfElse') || !$parser->getStructure()->isExpectable('else'))
+			{
+				$parser->showError('Unexpected "else"');
+			}
+			$parser->getStructure()->atoms('else');
+		}
+
+		public static function getNextPossible()
+		{
+			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
+			return array(
+				'ic' => true, 'sp' => true
 			);
 		}
 	}
