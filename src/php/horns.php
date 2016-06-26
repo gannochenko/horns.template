@@ -151,6 +151,8 @@ namespace
 			        $next = $this->detectAtom($this->i);
 			        if($next['atom'] != false)
 			        {
+				        _print_r($next['atom']);
+
 				        // do atoms action
 				        $this->evaluateAtom($next);
 				        $this->lastAtom($next); // save atom just found
@@ -174,9 +176,9 @@ namespace
 			return $this->struct->tree->evaluate([], $obj);
         }
 
-		public function inTag($change = false, $safe = false)
+		public function inTag($change = null, $safe = false)
 		{
-			if($change)
+			if($change !== null)
 			{
 				if(static::$debugMode && !$change)
 				{
@@ -193,8 +195,15 @@ namespace
 
 		private function evaluateAtom($found)
 		{
-			// todo: somehow eval the atom
-			//return this.atoms[found.atom].do.apply(this, [found.value, this.vars.i, found.offset]);
+			$atoms = $this->getAtoms();
+
+			if($atoms[$found['atom']])
+			{
+				$className = $atoms[$found['atom']];
+				return $className::append($found['value'], $this->i, $this);
+			}
+
+			return null;
 		}
 
 		public function saveTextChunk()
@@ -748,7 +757,7 @@ namespace Horns\Node
 
 		public function append($node)
 		{
-			$node[] = $this->sub;
+			$this->sub[] = $node;
 		}
 
 		public function symbol(Symbol $symbol)
@@ -898,11 +907,16 @@ namespace Horns\Node\Instruction
 
 		public function symbol(Symbol $symbol)
 		{
-			if ($this->name === false) {
+			if ($this->name === false)
+			{
 				$this->name = $symbol;
-			} elseif ($this->ctxSymbol === false) {
+			}
+			elseif($this->ctxSymbol === false)
+			{
 				$this->ctxSymbol = new FnCall($symbol, $this->parser);
-			} else {
+			}
+			else
+			{
 				throw new ParseException('Unexpected symbol "' . $symbol->getValue() . '"', $this->parser);
 			}
 		}
@@ -936,7 +950,7 @@ namespace Horns\Node\Instruction
 		public static function exportAtoms()
 		{
 			return array(
-				'NestedTemplate' => '\\Horns\\Atoms\\TemplateInclude',
+				'NestedTemplate' => '\\Horns\\Atom\\TemplateInclude',
 			);
 		}
 	}
@@ -1070,7 +1084,7 @@ namespace Horns\Atom
 	{
 		public static function find($i, \Horns $parser)
 		{
-			return Util::testSubString($parser->getTemplateString(), $i, \Horns\Symbol::getRegExp());
+			return Util::testSequence($parser->getTemplateString(), $i, \Horns\Symbol::getRegExp());
 		}
 
 		public static function append($value, $i, \Horns $parser)

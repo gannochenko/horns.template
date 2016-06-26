@@ -29,7 +29,7 @@
 
 <h1>Horns test page</h1>
 
-<script src="../src/js/horns.js"></script>
+<script src="../../src/js/horns.js"></script>
 <script>
 
 	var helpers = {
@@ -255,7 +255,7 @@
 
 	for(k in tests)
 	{
-		template = new Horns.compile(tests[k].template, tests[k].name);
+		template = Horns.compile(tests[k].template, tests[k].name);
 		for(j in helpers)
 		{
 			template.registerHelper(j, helpers[j]);
