@@ -390,7 +390,7 @@
 	{
 		return this.testSequence(i, word+'(\\s+|\}\}|\$)') ? word : false;
 	};
-	proto.isExpectable = function(found)
+	proto.isExpectable = function(found) // todo: rename function to smth more appropriate
 	{
 		if(!this.inTag())
 		{

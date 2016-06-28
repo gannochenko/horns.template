@@ -149,17 +149,17 @@ namespace
 			        }
 
 			        $next = $this->detectAtom($this->i);
-			        if($next['atom'] != false)
+			        if($next['atom'])
 			        {
-				        _print_r($next['atom']);
-
 				        // do atoms action
 				        $this->evaluateAtom($next);
 				        $this->lastAtom($next); // save atom just found
+
+				        _print_r($next['atom'].' => '.$next['value']);
 			        }
 			        else
 			        {
-				        if($this->inTag())
+				        if(!$this->inTag())
 				        {
 					        $this->appendChunk($this->i); // we are not inside of some Instruction, then append the symbol to the text chunk
 				        }
@@ -210,6 +210,8 @@ namespace
 		{
 			if($this->chunk != '')
 			{
+				_print_r($this->chunk);
+
 				$this->struct->append(new Text($this->chunk));
 				$this->chunk = '';
 			}
@@ -217,10 +219,10 @@ namespace
 
 		private function appendChunk($i)
 		{
-			$this->chunk += $this->str[$i];
+			$this->chunk .= $this->str[$i];
 		}
 
-		public function isExpectable($found)
+		public function isExpectable(array $found)
 		{
 			if(!$this->inTag())
 			{
@@ -236,7 +238,14 @@ namespace
 				else
 				{
 					// todo: somehow implement this
-					//return typeof this.atoms[lastAtom.atom].syn[found.atom] != 'undefined';
+					$atoms = $this->getAtoms();
+					if($atoms[$lastAtom['atom']]) // getNextPossible
+					{
+						$atomClass = $atoms[$lastAtom['atom']];
+						$possible = $atomClass::getNextPossible();
+
+						return array_key_exists($found['atom'], $possible);
+					}
 				}
 			}
 
@@ -999,7 +1008,7 @@ namespace Horns\Node\Instruction
 
 				if($res)
 				{
-					$value += static::evaluateInstructionSet($br['ch'], $ctx, $data);
+					$value .= static::evaluateInstructionSet($br['ch'], $ctx, $data);
 					break;
 				}
 			}
@@ -1028,7 +1037,7 @@ namespace Horns\Node\Instruction
 			}
 		}
 
-		public function get($i)
+		public function get($i = false)
 		{
 			$br = $this->branches[count($this->branches) - 1];
 			if(!count($br['ch']))
@@ -1283,7 +1292,7 @@ namespace Horns\Atom
 	{
 		public static function getSequence()
 		{
-			return '//';
+			return '/';
 		}
 
 		public static function getNextPossible()
