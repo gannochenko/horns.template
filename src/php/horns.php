@@ -552,7 +552,7 @@ namespace Horns
 			return null;
 		}
 
-		public function isExpectable()
+		public function isExpectable($symbol)
 		{
 			return true;
 		}
@@ -621,9 +621,9 @@ namespace Horns
 			return $this->current instanceof $className;
 		}
 
-	    public function isExpectable($atom)
+	    public function isExpectable($symbol)
 		{
-			return $this->current->isExpectable($atom);
+			return $this->current->isExpectable($symbol); // instruction->isExpectable
 		}
 
 	    public function atoms($atom)
@@ -886,9 +886,11 @@ namespace Horns\Node\Instruction
 			}
 		}
 
-		public function isExpectable(Symbol $symbol)
+		public function isExpectable($symbol)
 		{
-			return $this->conditionalSymbol->getValue() == $symbol->getValue(); // ensure that opening tag matches closing tag
+			$value = $symbol instanceof Symbol ? $symbol->getValue() : (string) $symbol;
+
+			return $this->conditionalSymbol->getValue() == $value; // ensure that opening tag matches closing tag
 		}
 
 		public function get($i = false)
@@ -959,7 +961,7 @@ namespace Horns\Node\Instruction
 		public static function exportAtoms()
 		{
 			return array(
-				'NestedTemplate' => '\\Horns\\Atom\\TemplateInclude',
+				'nested' => '\\Horns\\Atom\\TemplateInclude',
 			);
 		}
 	}
@@ -1050,9 +1052,11 @@ namespace Horns\Node\Instruction
 			}
 		}
 
-		public function isExpectable(Symbol $symbol)
+		public function isExpectable($symbol)
 		{
-			if($symbol->getValue() == 'endif')
+			$value = $symbol instanceof Symbol ? $symbol->getValue() : (string) $symbol;
+
+			if($value == 'endif')
 			{
 				return true;
 			}
@@ -1188,7 +1192,7 @@ namespace Horns\Atom
 		{
 			// todo: replace atom codes with their class names, i.e. "sym" with "\Horns\Atom\Symbol"
 			return array(
-				'hash' => true, 'slash' => true, 'NestedTemplate' => true, 'if' => true, 'elseif' => true, 'else' => true,
+				'hash' => true, 'slash' => true, 'nested' => true, 'if' => true, 'elseif' => true, 'else' => true,
 				'endif' => true, 'ic' => true, 'sym' => true, 'sp' => true,
 			);
 		}

@@ -85,7 +85,7 @@
 				this.saveTextChunk();
 				this.inTag(true, true);
 			},
-			syn: {'hash':true,'slash':true,'NestedTemplate':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
+			syn: {'hash':true,'slash':true,'nested':true,'if':true,'elseif':true,'else':true,'endif':true, 'ic':true, 'sym':true,'sp':true},
 		},
 		icu: {
 			find: function(i){
@@ -133,7 +133,7 @@
 			},
 			syn: {'if':true,'each':true,'sym':true,'sp':true},
 		},
-		NestedTemplate: {
+		nested: {
 			find: function(i){
 				return this.testSubString(i, '>');
 			},
