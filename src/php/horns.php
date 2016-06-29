@@ -578,7 +578,7 @@ namespace Horns
     class Structure
     {
 	    private $current = null;
-	    private $tree = null;
+	    public $tree = null;
 	    private $parser = null;
 
 	    public function __construct(\Horns $parser)
