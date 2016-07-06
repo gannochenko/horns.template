@@ -317,7 +317,7 @@
 	};
 	proto.callHelper = function(name, args, ctx, data)
 	{
-		if(typeof this.vars.helpers[name] == 'undefined')
+		if(typeof this.vars.helpers[name] == 'undefined' || !Util.type.isFunction(this.vars.helpers[name]))
 		{
 			return ''; // todo: or may be null?
 		}
@@ -328,7 +328,12 @@
 			hArgs.push(args[k].evaluate(ctx, data));
 		}
 
-		return this.vars.helpers[name].apply(Util.dereferencePath(ctx, data), hArgs);
+		var helper = this.vars.helpers[name];
+		var helperCtx = Util.dereferencePath(ctx, data);
+
+		hArgs.push(helperCtx);
+		
+		return helper.apply(helperCtx, hArgs);
 	};
 	proto.inTag = function(change, safe)
 	{
@@ -668,7 +673,7 @@
 		// call sub Instructions
 		value += Node.Instruction.evaluateInstructionSet(this.sub, ctx, data);
 
-		return value;
+		return this.escape ? Util.escape(value) : value;
 	};
 	proto.append = function(node)
 	{
@@ -944,7 +949,7 @@
 	// structure
 	var Structure = function(parser)
 	{
-		this.current = new Node.Instruction(parser);
+		this.current = new Node.Instruction(parser, false);
 		this.tree = this.current;
 	};
 	proto = Structure.prototype;
@@ -995,7 +1000,15 @@
 			isIterableObject: function(obj)
 			{
 				return this.isPlainObject(obj) && 'length' in obj && obj.length > 0 && typeof obj[0] != 'undefined';
+			},
+			isFunction: function(obj)
+			{
+				return Object.prototype.toString.call(obj) == '[object Function]';
 			}
+		},
+		escape: function(value)
+		{
+			return value; // todo!!!
 		},
 		dereferencePath: function(path, data)
 		{

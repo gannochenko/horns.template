@@ -10,6 +10,7 @@ namespace
 	use Horns\ParseException;
 	use Horns\Structure;
 	use Horns\Node\Instruction;
+	use Horns\Util;
 
 	class Horns
     {
@@ -103,7 +104,7 @@ namespace
 
 		public function callHelper($name, array $args, $ctx, $data)
 		{
-			if(!array_key_exists($name, $this->helpers))
+			if(!array_key_exists($name, $this->helpers) || !is_callable($this->helpers[$name]))
 			{
 				return ''; // todo: or maybe null?
 			}
@@ -112,12 +113,22 @@ namespace
 			$argLen = count($args);
 			for($k = 0; $k < $argLen; $k++)
 			{
-				array_push($hArgs, $args[$k].evaluate($ctx, $data));
+				array_push($hArgs, $args[$k]->evaluate($ctx, $data));
 			}
 
-			// todo: somehow evaluate closure in php-way
-			return '';
-			//return this.parser.vars.helpers[this.name].apply(Util.dereferencePath(ctx, data), hArgs);
+			$helper = $this->helpers[$name];
+			$helperCtx = Util::dereferencePath($ctx, $data);
+
+			if($helper instanceof Closure && is_object($helperCtx))
+			{
+				return $helper->call($helperCtx, $hArgs);
+			}
+			else
+			{
+				$hArgs[] = $helperCtx;
+
+				return call_user_func_array($helper, $hArgs);
+			}
 		}
 
 	    public function showError($message)
@@ -254,7 +265,7 @@ namespace
 
 		public function lastAtom($found = null)
 		{
-			if($found != null)
+			if($found === null)
 			{
 				if(!count($this->tag['atoms']))
 				{
@@ -583,7 +594,7 @@ namespace Horns
 
 	    public function __construct(\Horns $parser)
 	    {
-		    $this->current = new Instruction($parser);
+		    $this->current = new Instruction($parser, false);
 		    $this->tree = $this->current;
 		    $this->parser = $parser;
 	    }
@@ -667,6 +678,11 @@ namespace Horns
 			$pLen = count($path);
 			for($k = 0; $k < $pLen; $k++)
 			{
+				if(!is_array($val) || !array_key_exists($path[$k], $val))
+				{
+					return '';
+				}
+
 				$val = $val[$path[$k]];
 				if(!$val)
 				{
@@ -761,7 +777,7 @@ namespace Horns\Node
 
 			$value .= static::evaluateInstructionSet($this->sub, $ctx, $data);
 
-			return $value;
+			return $this->escape ? htmlspecialchars($value) : $value;
 		}
 
 		public function append($node)
