@@ -251,10 +251,15 @@
 		}
 	];
 
+	var t = Horns.compile('LALALA {{#basket}} >{{name}}< {{/basket}} LOLOLO', 'fffuuu');
+	console.dir(t);
+
 	var k, j, template;
 
 	for(k in tests)
 	{
+		break;
+
 		template = Horns.compile(tests[k].template, tests[k].name);
 		for(j in helpers)
 		{

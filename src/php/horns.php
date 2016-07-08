@@ -756,9 +756,9 @@ namespace Horns\Node
 	 */
 	class Instruction extends \Horns\Node
 	{
-		private $escape = true;
-		private $sym = null;
-		private $sub = [];
+		protected $escape = true;
+		protected $sym = null;
+		protected $sub = [];
 
 		public function __construct(\Horns $parser, $escape = true)
 		{
@@ -836,9 +836,8 @@ namespace Horns\Node\Instruction
 	 */
 	class LogicLess extends Instruction
 	{
-		private $sub = []; // sub-instruction set
-		private $condition = null; // conditional function call, it always will be pseudo FnCall
-		private $conditionalSymbol = false; // instruction symbol, i.e. when {{#inner}} met it will be "inner"
+		protected $condition = null; // conditional function call, it always will be pseudo FnCall
+		protected $conditionalSymbol = false; // instruction symbol, i.e. when {{#inner}} met it will be "inner"
 
 		public function evaluate($ctx, $data)
 		{
@@ -929,8 +928,8 @@ namespace Horns\Node\Instruction
 	 */
 	class NestedTemplate extends Instruction
 	{
-		private $name = false;
-		private $ctxSymbol = false;
+		protected $name = false;
+		protected $ctxSymbol = false;
 
 		public function symbol(Symbol $symbol)
 		{
@@ -990,11 +989,13 @@ namespace Horns\Node\Instruction
 	 */
 	class IfElse extends Instruction
 	{
-		private $branches = [];
-		private $metElse = false;
+		protected $branches = [];
+		protected $metElse = false;
 
-		public function __construct()
+		public function __construct(\Horns $parser)
 		{
+			parent::__construct($parser, false);
+
 			$this->newBranch();
 		}
 
