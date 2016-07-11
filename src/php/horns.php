@@ -1088,7 +1088,7 @@ namespace Horns\Node\Instruction
 
 		public function getBriefDebug()
 		{
-			return $this->name.' '.($this->ctxSymbol ? 'fn:'.$this->ctxSymbol->getBriefDebug() : '');
+			return $this->name->getBriefDebug().' '.($this->ctxSymbol ? 'fn:'.$this->ctxSymbol->getBriefDebug() : '');
 		}
 	}
 

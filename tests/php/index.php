@@ -28,6 +28,15 @@ $helpers = array(
 	'quote' => function($arg){
 		return '&laquo;'.((string) $arg).'&raquo;';
 	},
+	'implodeArgs' => function(){
+		return implode(', ', func_get_args());
+	},
+	'implode' => function($arg){
+		return implode(', ', $arg);
+	},
+	'ucFirst' => function($arg){
+		return ucfirst((string) $arg);
+	},
 	'totalPrice' => function($arg){
 
 		$sum = 0;
@@ -89,18 +98,107 @@ $helpers = array(
 		return $faction == 'CT' ? 'CT Forces' : 'Terrorists';
 	}
 );
-
-//$template = 'The quick {{personA}} jumps over the lazy {{personB}}';
-$template = '';
-ob_start();
+$tests = array(
+	array(
+		'data' => [
+			'personA' => 'brown fox',
+			'personB' => 'dog',
+		],
+		'template' => 'The quick {{{quote personA}}} jumps over the lazy {{{quote personB}}}',
+		'name' => 'jumping',
+	),
+	array(
+		'data' => [
+			'jumps' => [
+				[
+					'personA' => 'brown fox',
+					'personB' => 'dog',
+				],
+				[
+					'personA' => 'crazy elk',
+					'personB' => 'brutal crocodile',
+				],
+				[
+					'personA' => 'smelly squirrel',
+					'personB' => 'gorgeous giraffe',
+				]
+			]
+		],
+		'template' => '<h3>Jumping around:</h3> {{#jumps}} {{> jumping}} <br /> {{/jumps}}',
+		'name' => 'massive_jump',
+	),
+	/*
+	array(
+		'data' => [
+			'weapon' => [
+				[
+					'name' => 'Glock-17',
+					'type' => 'P',
+					'sides' => ['CT'],
+					'inManual' => false
+				],
+				[
+					'name' => 'MP-5',
+					'type' => 'R',
+					'sides' => ['CT', 'T'],
+					'inManual' => true
+				],
+				[
+					'name' => 'AK-47',
+					'type' => 'R',
+					'sides' => ['T']
+				],
+				[
+					'name' => 'Kevlar',
+					'type' => 'A',
+					'sides' => ['CT', 'T'],
+					'inManual' => true
+				]
+			],
+		],
+		'template' => '
+			<h3>Counter-Strike 1.6 weapons:</h3>
+			<ul>
+			{{#weapon}}
+			<li>{{name}}, type: {{#if isPistol this}}Pistol{{elseif isRifle this}}Rifle{{elseif isArmor this}}Armor{{else}}Unknown{{/if}}<br />
+				Who can buy:<ul>
+					{{#sides}}
+					<li>{{getFactionName this}}{{#../../inManual}}&nbsp;&nbsp;<a href="#{{../../name}}">See game manual</a>{{/../../inManual}}</li>
+					{{/sides}}
+					</ul>
+				</li>
+			{{/weapon}}
+			</ul>
+			',
+		'name' => '',
+	),
+	array(
+		'data' => [],
+		'template' => '<h3>Dear {{guestName}}, your menu for today is:</h3>
+			<ul>
+			{{#meal}}
+				<li>
+					<b>{{ucFirst title}}</b><br />
+					Time: {{time}}<br />
+					Dishes: {{implode menu}}
+				</li>
+			{{/meal}}
+			</ul>',
+		'name' => '',
+	),
+	array(
+		'data' => [],
+		'template' => '',
+		'name' => '',
+	),
+	array(
+		'data' => [],
+		'template' => '',
+		'name' => '',
+	),
+	*/
+);
 ?>
-<?/*
-	The quick {{{quote personA}}} jumps over the lazy {{quote personB}}
-*/?>
-
-<?/*
-	<h3>Jumping around:</h3> {{#jumps}} {{> jumping}} <br /> {{/jumps}}
-*/?>
 
 <?/*
 <form>
@@ -134,27 +232,10 @@ ob_start();
 </form>
 */?>
 
-	<h3>Counter-Strike 1.6 weapons:</h3>
-	<ul>
-	{{#weapon}}
-	<li>{{name}}, type: {{#if isPistol this}}Pistol{{elseif isRifle this}}Rifle{{elseif isArmor this}}Armor{{else}}Unknown{{/if}}<br />
-		Who can buy:<ul>
-			{{#sides}}
-			<li>{{getFactionName this}}{{#../../inManual}}&nbsp;&nbsp;<a href="#{{../../name}}">See game manual</a>{{/../../inManual}}</li>
-			{{/sides}}
-			</ul>
-		</li>
-	{{/weapon}}
-	</ul>
+
 
 <?
-$template = ob_get_clean();
-
 /*
-$data = [
-	'personA' ' 'brown fox',
-	'personB' ' 'dog',
-];
 $data = [
 	'basket'=> [
 		[
@@ -185,62 +266,21 @@ $data = [
 	]
 ];
 */
-$data = [
-	'weapon' => [
-		[
-			'name' => 'Glock-17',
-			'type' => 'P',
-			'sides' => ['CT'],
-			'inManual' => false
-		],
-		[
-			'name' => 'MP-5',
-			'type' => 'R',
-			'sides' => ['CT', 'T'],
-			'inManual' => true
-		],
-		[
-			'name' => 'AK-47',
-			'type' => 'R',
-			'sides' => ['T']
-		],
-		[
-			'name' => 'Kevlar',
-			'type' => 'A',
-			'sides' => ['CT', 'T'],
-			'inManual' => true
-		]
-	]
-];
 
-\Horns::toggleDebugMode(true);
-\Horns\Util::debug($template);
+\Horns::toggleDebugMode(false);
 
-$parser = Horns::compile($template);
-
-foreach($helpers as $name => $fn)
+foreach($tests as $test)
 {
-	$parser->registerHelper($name, $fn);
+	\Horns\Util::debug($test['template']);
+	$parser = Horns::compile($test['template'], $test['name']);
+	foreach($helpers as $name => $fn)
+	{
+		$parser->registerHelper($name, $fn);
+	}
+
+	$parser->outputStructure();
+
+	print_r('----<br />');
+	print($parser->get($test['data']));
+	print_r('<br />----<br />');
 }
-
-$parser->outputStructure();
-
-print_r('----<br />');
-print($parser->get($data));
-print_r('<br />----<br />');
-/*
-
-	<h3>Dear {{guestName}}, your menu for today is:</h3>
-	<ul>
-	{{#meal}}
-		<li>
-			<b>{{ucFirst title}}</b><br />
-			Time: {{time}}<br />
-			Dishes: {{implode menu}}
-		</li>
-	{{/meal}}
-	</ul>
-
-
-
- */
