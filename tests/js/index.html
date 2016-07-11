@@ -27,7 +27,7 @@
 	}
 </style>
 
-<h1>Horns test page</h1>
+<h1>Horns test page: JavaScript</h1>
 
 <script>
 	document.write('<script src="../../src/js/horns.js?'+Math.floor(Math.random()*3000)+'"></scr'+'ipt>');
@@ -91,7 +91,6 @@
 	};
 
 	var tests = [
-			/*
 		{
 			data: {
 				personA: 'brown fox',
@@ -133,7 +132,6 @@
 			"</ul>",
 			name: 'menu'
 		},
-		*/
 		{
 			data: {
 				basket: {
@@ -216,7 +214,6 @@
 			},
 			template: '<la>{{getCostAlt basket.0 this}}</la>',
 		},
-			/*
 		{
 			data: {
 				weapon: [
@@ -279,7 +276,6 @@
 			template: "<h3>Jumping around:</h3> {{#jumps}} {{> jumping}} <br /> {{/jumps}}",
 			name: 'jumpingPairs'
 		}
-		*/
 	];
 
 	Horns.toggleDebugMode(false);
