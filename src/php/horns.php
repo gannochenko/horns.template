@@ -527,6 +527,7 @@ namespace Horns
 		private $name = 'pseudo';
 		private $args = [];
 		private $parser = null;
+		protected $nameReplaced = false;
 
 		public function __construct(Symbol $arg, \Horns $parser)
 		{
@@ -540,7 +541,7 @@ namespace Horns
 
 		public function addArgument(Symbol $arg)
 		{
-			if(count($this->args) == 1)
+			if(!$this->nameReplaced)
 			{
 				if(!$this->args[0]->isSimple())
 				{
@@ -551,6 +552,7 @@ namespace Horns
 					$this->name = $this->args[0]->getValue();
 				}
 
+				$this->nameReplaced = true;
 				$this->args = [];
 			}
 
