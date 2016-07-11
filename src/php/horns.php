@@ -1143,7 +1143,7 @@ namespace Horns\Node\Instruction
 		{
 			// todo: check that no symbol can go after 'else' atom
 
-			$lastBr = $this->branches[count($this->branches) - 1];
+			$lastBr =& $this->branches[count($this->branches) - 1];
 
 			if($lastBr['cond'] == null)
 			{
