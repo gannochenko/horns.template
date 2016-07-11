@@ -279,7 +279,6 @@ namespace
 				}
 				else
 				{
-					// todo: somehow implement this
 					$atoms = $this->getAtoms();
 					if($atoms[$lastAtom['atom']]) // getNextPossible
 					{
@@ -1126,7 +1125,7 @@ namespace Horns\Node\Instruction
 	 *  {{#if smth}} ... {{else}} ... {{/if}} or {{if smth}} ... {{elseif anoter}} ... {{else}} ... {{endif}}
 	 * @package Horns\Node\Instruction
 	 */
-	class IfElse extends Instruction
+	class IfElse extends Instruction // todo: rename IfElse to Conditional
 	{
 		protected $branches = [];
 		protected $metElse = false;
@@ -1182,7 +1181,6 @@ namespace Horns\Node\Instruction
 		public function symbol(Symbol $symbol)
 		{
 			// todo: check that no symbol can go after 'else' atom
-
 			$lastBr =& $this->branches[count($this->branches) - 1];
 
 			if($lastBr['cond'] == null)
