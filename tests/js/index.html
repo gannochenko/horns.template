@@ -29,7 +29,9 @@
 
 <h1>Horns test page</h1>
 
-<script src="../../src/js/horns.js"></script>
+<script>
+	document.write('<script src="../../src/js/horns.js?'+Math.floor(Math.random()*3000)+'"></scr'+'ipt>');
+</script>
 <script>
 
 	var helpers = {
@@ -57,8 +59,11 @@
 		isNotEmpty: function(arg){
 			return arg.length > 0;
 		},
-		getCost: function(){
+		getCost: function(arg1, arg2){
 			return this.price * this.quantity;
+		},
+		getCostAlt: function(arg1, arg2){
+			return (arg1.price * arg1.quantity) + ' of ' + arg2.payment[1].title;
 		},
 		getDiscountCost: function(){
 			var cost = this.price * this.quantity;
@@ -160,7 +165,6 @@
 					{title: 'Cash', value: 'cash', default: true}
 				]
 			},
-			/*
 			template: "<form>" +
 				"<h3>Your order is:</h3>" +
 				"<div class=\"container\">" +
@@ -173,7 +177,7 @@
 										"<td>{{name}}</td>" +
 										"<td>${{price}}</td>" +
 										"<td>{{quantity}}</td>" +
-										"<td>{{#if discount}}<s>{{/if}}${{getCost this}}{{#if discount}}</s> (with discount: ${{getDiscountCost this}}){{/if}}</td>" +
+										"<td>{{#if discount}}<s>{{/if}}${{getCost this this}}{{#if discount}}</s> (with discount: ${{getDiscountCost this}}){{/if}}</td>" +
 									"</tr>" +
 								"{{/basket}}" +
 							"</tbody>" +
@@ -188,14 +192,29 @@
 					"{{/payment}}" +
 				"</select>" +
 			"</form>",
-			*/
-			template: "Pay with: " +
-				"<select>" +
-				"{{#payment}}" +
-				"<option value=\"{{value}}\">{{title}}</option>"+
-				"{{/payment}}" +
-				"</select>",
 			name: 'basket'
+		},
+		{
+			data: {
+				basket: {
+					length: 4,
+					0: {
+						name: 'Fish&Chips',
+						quantity: 3,
+						price: 10
+					},
+					1: {
+						name: 'Pair of socks',
+						quantity: 5,
+						price: 700
+					},
+				},
+				payment: [
+					{title: 'Visa/Master Card', value: 'card'},
+					{title: 'Cash', value: 'cash', default: true}
+				]
+			},
+			template: '<la>{{getCostAlt basket.0 this}}</la>',
 		},
 			/*
 		{
@@ -262,6 +281,8 @@
 		}
 		*/
 	];
+
+	Horns.toggleDebugMode(false);
 
 	var k, j, template;
 

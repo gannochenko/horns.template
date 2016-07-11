@@ -602,6 +602,7 @@
 		this.name = 'pseudo';
 		this.args = [];
 		this.parser = parser;
+		this.nameReplaced = false;
 
 		if(typeof arg != 'undefined')
 		{
@@ -611,7 +612,7 @@
 	proto = FnCall.prototype;
 	proto.addArgument = function(arg)
 	{
-		if(this.args.length == 1)
+		if(!this.nameReplaced) // if this FnCall is "pseudo", with one argument
 		{
 			if(!this.args[0].isSimple())
 			{
@@ -622,6 +623,7 @@
 				this.name = this.args[0].getValue();
 			}
 
+			this.nameReplaced = true;
 			this.args = [];
 		}
 
@@ -752,7 +754,7 @@
 			if(Util.type.isIterableObject(result) || Util.type.isArray(result)) // array or object that supports iteration
 			{
 				var dRef = Util.dereferencePath(ctx, data);
-				if(!Util.type.isIterableObject(dRef) && !Util.type.isArray(dRef))
+				if(!Util.type.isPlainObject(dRef) && !Util.type.isArray(dRef))
 				{
 					return '';
 				}
