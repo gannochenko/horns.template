@@ -1022,7 +1022,16 @@
 		},
 		escape: function(value)
 		{
-			return value; // todo!!!
+			if(typeof value == 'undefined' || value === null)
+			{
+				return value;
+			}
+
+			return value.toString()
+				.replace(/&/g, '&amp;')
+				.replace(/"/g, '&quot;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;');
 		},
 		dereferencePath: function(path, data)
 		{
