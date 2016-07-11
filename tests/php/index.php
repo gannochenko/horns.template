@@ -299,17 +299,18 @@ $tests = array(
 );
 
 \Horns::toggleDebugMode(false);
+\Horns::toggleProfileMode(true);
 foreach($tests as $test)
 {
 	//\Horns\Util::debug($test['template']);
 	$parser = Horns::compile($test['template'], $test['name']);
+
 	foreach($helpers as $name => $fn)
 	{
 		$parser->registerHelper($name, $fn);
 	}
 
 	//$parser->outputStructure();
-
 	print($parser->get($test['data']));
 	print('<hr />');
 }

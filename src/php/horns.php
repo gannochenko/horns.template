@@ -22,6 +22,7 @@ namespace
         private $helpers =    [];
 
         protected static $debugMode = false;
+		protected static $profileMode = false;
         private static $registry = [];
 		private static $atomList = null;
 
@@ -53,6 +54,8 @@ namespace
 
         public static function compile($str, $name = '')
         {
+	        $time = microtime(true);
+
             $instance = new static($str);
             $name = trim((string) $name);
 
@@ -60,6 +63,11 @@ namespace
             {
                 static::$registry[$name] = $instance;
             }
+
+	        if(static::$profileMode)
+	        {
+		        static::displayTime('Compile time: ', $time);
+	        }
 
 		    return $instance;
         }
@@ -200,7 +208,16 @@ namespace
 
 		public function get($obj)
         {
-			return $this->struct->tree->evaluate([], $obj);
+	        $time = microtime(true);
+
+	        $data = $this->struct->tree->evaluate([], $obj);
+
+	        if(static::$profileMode)
+	        {
+		        static::displayTime('Generate time: ', $time);
+	        }
+
+	        return $data;
         }
 
 		public function inTag($change = null, $safe = false)
@@ -365,6 +382,11 @@ namespace
 			return $result;
 		}
 
+		public static function toggleProfileMode($flag)
+		{
+			static::$profileMode = !!$flag;
+		}
+
 		public static function toggleDebugMode($flag)
 		{
 			static::$debugMode = !!$flag;
@@ -378,6 +400,12 @@ namespace
 		public function outputStructure()
 		{
 			$this->struct->debugOutput();
+		}
+
+		public static function displayTime($label, $start)
+		{
+			$amount = microtime(true) - $start;
+			Util::debug($label.' '.round($amount / 60, 7).' sec');
 		}
     }
 }
