@@ -90,6 +90,10 @@ $helpers = array(
 		return $cost;
 	},
 
+	'getCostAlt' => function($arg1, $arg2){
+		return ($arg1['price'] * $arg1['quantity']).' of '.$arg2['payment'][1]['title'];
+	},
+
 	'isPistol' => function($weapon){
 		return $weapon['type'] == 'P';
 	},
