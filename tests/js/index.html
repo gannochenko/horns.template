@@ -86,6 +86,7 @@
 	};
 
 	var tests = [
+			/*
 		{
 			data: {
 				personA: 'brown fox',
@@ -127,6 +128,7 @@
 			"</ul>",
 			name: 'menu'
 		},
+		*/
 		{
 			data: {
 				basket: {
@@ -158,6 +160,7 @@
 					{title: 'Cash', value: 'cash', default: true}
 				]
 			},
+			/*
 			template: "<form>" +
 				"<h3>Your order is:</h3>" +
 				"<div class=\"container\">" +
@@ -185,8 +188,16 @@
 					"{{/payment}}" +
 				"</select>" +
 			"</form>",
+			*/
+			template: "Pay with: " +
+				"<select>" +
+				"{{#payment}}" +
+				"<option value=\"{{value}}\">{{title}}</option>"+
+				"{{/payment}}" +
+				"</select>",
 			name: 'basket'
 		},
+			/*
 		{
 			data: {
 				weapon: [
@@ -249,6 +260,7 @@
 			template: "<h3>Jumping around:</h3> {{#jumps}} {{> jumping}} <br /> {{/jumps}}",
 			name: 'jumpingPairs'
 		}
+		*/
 	];
 
 	var k, j, template;

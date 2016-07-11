@@ -109,15 +109,25 @@ namespace
 				return ''; // todo: or maybe null?
 			}
 
+			$helper = $this->helpers[$name];
+			$helperCtx =& Util::dereferencePath($ctx, $data);
+
 			$hArgs = [];
 			$argLen = count($args);
 			for($k = 0; $k < $argLen; $k++)
 			{
-				array_push($hArgs, $args[$k]->evaluate($ctx, $data));
+				$argValue = $args[$k]->getValue();
+				if(trim($argValue) == 'this')
+				{
+					array_push($hArgs, $helperCtx);
+				}
+				else
+				{
+					array_push($hArgs, $args[$k]->evaluate($ctx, $data));
+				}
 			}
 
-			$helper = $this->helpers[$name];
-			$helperCtx = Util::dereferencePath($ctx, $data);
+			$hArgs[] = $helperCtx; // append reference to helperCtx to the end of fn arguments
 
 			if($helper instanceof Closure && is_object($helperCtx))
 			{
@@ -125,8 +135,6 @@ namespace
 			}
 			else
 			{
-				$hArgs[] = $helperCtx;
-
 				return call_user_func_array($helper, $hArgs);
 			}
 		}
@@ -443,7 +451,7 @@ namespace Horns
 			$this->path = $this->parseSeqence($this->path);
 		}
 
-		public function evaluate($ctx, $data)
+		public function evaluate($ctx, &$data)
 		{
 			$path = $this->absolutizePath($ctx);
 
@@ -549,7 +557,7 @@ namespace Horns
 			array_push($this->args, $arg);
 		}
 
-		public function evaluate($ctx, $data)
+		public function evaluate($ctx, &$data)
 		{
 			return $this->parser->callHelper($this->name, $this->args, $ctx, $data);
 		}
@@ -568,7 +576,7 @@ namespace Horns
 		protected $parent = null;
 		protected $sub = [];
 
-		abstract public function evaluate($ctx, $data);
+		abstract public function evaluate($ctx, &$data);
 
 		public function setParent($parent)
 		{
@@ -602,7 +610,7 @@ namespace Horns
 			return true;
 		}
 
-		public static function evaluateInstructionSet($iSet, $ctx, $data)
+		public static function evaluateInstructionSet($iSet, $ctx, &$data)
 		{
 			$value = '';
 			$iSetLen = count($iSet);
@@ -737,22 +745,19 @@ namespace Horns
 
 	class Util
 	{
-		public static function dereferencePath(array $path, $data)
+		public static function &dereferencePath(array $path, &$data)
 		{
-			$val = $data;
+			$val =& $data;
 			$pLen = count($path);
 			for($k = 0; $k < $pLen; $k++)
 			{
 				if(!is_array($val) || !array_key_exists($path[$k], $val))
 				{
-					return '';
+					$noValue = '';
+					return $noValue;
 				}
 
-				$val = $val[$path[$k]];
-				if(!$val)
-				{
-					return '';
-				}
+				$val =& $val[$path[$k]];
 			}
 
 			return $val;
@@ -814,7 +819,7 @@ namespace Horns\Node
 			$this->value = $value;
 		}
 
-		public function evaluate($ctx, $data)
+		public function evaluate($ctx, &$data)
 		{
 			return $this->value;
 		}
@@ -841,7 +846,7 @@ namespace Horns\Node
 			$this->parser = $parser;
 		}
 
-		public function evaluate($ctx, $data)
+		public function evaluate($ctx, &$data)
 		{
 			$value = '';
 
@@ -922,7 +927,7 @@ namespace Horns\Node\Instruction
 		// todo: replace use of $conditionalSymbol with smth like $condition->getArgument(0)
 		protected $conditionalSymbol = false; // instruction symbol, i.e. when {{#inner}} met it will be "inner"
 
-		public function evaluate($ctx, $data)
+		public function evaluate($ctx, &$data)
 		{
 			$value = '';
 			if($this->condition === null)
@@ -948,7 +953,12 @@ namespace Horns\Node\Instruction
 
 				if($iterable) // array or object that supports iteration
 				{
-					$dRef = \Horns\Util::dereferencePath($ctx, $data);
+					$dRef =& \Horns\Util::dereferencePath($ctx, $data);
+					if(!is_array($dRef))
+					{
+						return '';
+					}
+
 					$dRef[$resultKey] = $result;
 					array_push($ctx, $resultKey);
 
@@ -1036,7 +1046,7 @@ namespace Horns\Node\Instruction
 			}
 		}
 
-		public function evaluate($ctx, $data)
+		public function evaluate($ctx, &$data)
 		{
 			$value = '';
 
@@ -1052,7 +1062,7 @@ namespace Horns\Node\Instruction
 					}
 					else
 					{
-						$rData = \Horns\Util::dereferencePath($ctx, $data);
+						$rData = Util::dereferencePath($ctx, $data);
 					}
 
 					$value = $template->get($rData);
@@ -1106,7 +1116,7 @@ namespace Horns\Node\Instruction
 			];
 		}
 
-		public function evaluate($ctx, $data)
+		public function evaluate($ctx, &$data)
 		{
 			$value = '';
 			$bLen = count($this->branches);

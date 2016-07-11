@@ -322,16 +322,23 @@
 			return ''; // todo: or may be null?
 		}
 
-		var hArgs = [];
-		for(var k = 0; k < args.length; k++)
-		{
-			hArgs.push(args[k].evaluate(ctx, data));
-		}
-
 		var helper = this.vars.helpers[name];
 		var helperCtx = Util.dereferencePath(ctx, data);
 
-		hArgs.push(helperCtx);
+		var hArgs = [];
+		for(var k = 0; k < args.length; k++)
+		{
+			if(args[k].getValue().trim() == 'this')
+			{
+				hArgs.push(helperCtx);
+			}
+			else
+			{
+				hArgs.push(args[k].evaluate(ctx, data));
+			}
+		}
+
+		hArgs.push(helperCtx); // append reference to helperCtx to the end of fn arguments
 		
 		return helper.apply(helperCtx, hArgs);
 	};
@@ -745,6 +752,11 @@
 			if(Util.type.isIterableObject(result) || Util.type.isArray(result)) // array or object that supports iteration
 			{
 				var dRef = Util.dereferencePath(ctx, data);
+				if(!Util.type.isIterableObject(dRef) && !Util.type.isArray(dRef))
+				{
+					return '';
+				}
+
 				dRef[resultKey] = result;
 				ctx.push(resultKey);
 
@@ -1016,7 +1028,7 @@
 			for(var k = 0; k < path.length; k++)
 			{
 				val = val[path[k]];
-				if(typeof val == 'undefined' || val === null)
+				if(typeof val == 'undefined' || val === null) // todo: remove val === null?
 				{
 					return '';
 				}
