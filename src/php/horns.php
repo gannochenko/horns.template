@@ -21,7 +21,7 @@ namespace
         private $chunk =      '';
         private $helpers =    [];
 
-        private static $debugMode = false;
+        protected static $debugMode = false;
         private static $registry = [];
 		private static $atomList = null;
 
@@ -143,6 +143,11 @@ namespace
 
 	        if(strlen($this->str))
 	        {
+		        if(static::isInDebugMode())
+		        {
+			        Util::debug('>>> Atom sequence: ----------------------');
+		        }
+
 		        $i = 0;
 		        $this->i = 0;
 		        $next = null;
@@ -166,7 +171,10 @@ namespace
 				        $this->evaluateAtom($next);
 				        $this->lastAtom($next); // save atom just found
 
-				        _print_r($next['atom'].' => '.$next['value']);
+				        if(static::isInDebugMode())
+				        {
+							Util::debug($next['atom'].' => '.$next['value']);
+				        }
 			        }
 			        else
 			        {
@@ -191,11 +199,6 @@ namespace
 		{
 			if($change !== null)
 			{
-				if(static::$debugMode && !$change)
-				{
-					//console.dir('-------------------------------');
-				}
-
 				$this->tag = $change ? ['safe' => $safe, 'atoms' => []] : false;
 			}
 			else
@@ -221,7 +224,10 @@ namespace
 		{
 			if($this->chunk != '')
 			{
-				_print_r($this->chunk);
+				if(static::isInDebugMode())
+				{
+					Util::debug($this->chunk);
+				}
 
 				$this->struct->append(new Text($this->chunk));
 				$this->chunk = '';
@@ -350,6 +356,21 @@ namespace
 
 			return $result;
 		}
+
+		public static function toggleDebugMode($flag)
+		{
+			static::$debugMode = !!$flag;
+		}
+
+		public static function isInDebugMode()
+		{
+			return static::$debugMode;
+		}
+
+		public function outputStructure()
+		{
+			$this->struct->debugOutput();
+		}
     }
 }
 
@@ -434,6 +455,16 @@ namespace Horns
 			return !$this->back && count($this->path) == 1;
 		}
 
+		public static function getRegExp()
+		{
+			return '(\.\./)*([a-zA-Z0-9_\\.]+)';
+		}
+
+		public function getBriefDebug()
+		{
+			return str_repeat('../', $this->back).implode('.', $this->path);
+		}
+
 		private function absolutizePath($base)
 		{
 			$result = $base;
@@ -459,11 +490,6 @@ namespace Horns
 			}
 
 			return $result;
-		}
-
-		public static function getRegExp()
-		{
-			return '(\.\./)*([a-zA-Z0-9_\\.]+)';
 		}
 
 		private function parseSeqence($sequence)
@@ -527,12 +553,20 @@ namespace Horns
 		{
 			return $this->parser->callHelper($this->name, $this->args, $ctx, $data);
 		}
+
+		public function getBriefDebug()
+		{
+			return $this->name.'('.implode(', ', array_map(function($item){
+				return $item->getBriefDebug();
+			}, $this->args)).')';
+		}
 	}
 
 	abstract class Node
 	{
 		protected $parser = null;
 		protected $parent = null;
+		protected $sub = [];
 
 		abstract public function evaluate($ctx, $data);
 
@@ -584,12 +618,38 @@ namespace Horns
 		{
 			return array();
 		}
+
+		public function debugOutput()
+		{
+			print('<div style="margin-left: 40px">');
+			Util::debug(get_called_class().': '.$this->getBriefDebug());
+			$this->debugOutputSelf();
+			$this->debugOutputSub();
+			print('</div>');
+		}
+
+		public function getBriefDebug()
+		{
+			return '';
+		}
+
+		public function debugOutputSelf()
+		{
+		}
+
+		public function debugOutputSub()
+		{
+			foreach($this->sub as $k => $instruction)
+			{
+				$instruction->debugOutput();
+			}
+		}
 	}
 
     class Structure
     {
 	    private $current = null;
-	    public $tree = null;
+	    public $tree = null; // todo: this property should not be public
 	    private $parser = null;
 
 	    public function __construct(\Horns $parser)
@@ -641,6 +701,11 @@ namespace Horns
 		{
 			return $this->current->atoms($atom);
 		}
+
+	    public function debugOutput()
+	    {
+		    $this->tree->debugOutput();
+	    }
     }
 
 	class Exception extends \Exception
@@ -721,6 +786,11 @@ namespace Horns
 		{
 			return static::testSequence($hayStack, $i, $word.'(\\s+|\}\}|\$)') ? $word : false;
 		}
+
+		public static function debug($data)
+		{
+			print('<pre>');print_r(is_string($data) ? htmlspecialchars($data) : $data);print('</pre>');
+		}
 	}
 }
 
@@ -728,6 +798,7 @@ namespace Horns\Node
 {
 	use Horns\FnCall;
 	use Horns\Symbol;
+	use Horns\Util;
 
 	/**
 	 * Class Node.Text
@@ -747,6 +818,11 @@ namespace Horns\Node
 		{
 			return $this->value;
 		}
+
+		public function debugOutputSub()
+		{
+			Util::debug($this->value);
+		}
 	}
 
 	/**
@@ -758,7 +834,6 @@ namespace Horns\Node
 	{
 		protected $escape = true;
 		protected $sym = null;
-		protected $sub = [];
 
 		public function __construct(\Horns $parser, $escape = true)
 		{
@@ -819,6 +894,11 @@ namespace Horns\Node
 				'slash' => '\\Horns\\Atom\\Slash',
 			);
 		}
+
+		public function getBriefDebug()
+		{
+			return ($this->escape ? 'S' : 'Uns').'afe'.($this->sym ? ', fn:'.$this->sym->getBriefDebug() : '');
+		}
 	}
 }
 
@@ -828,6 +908,7 @@ namespace Horns\Node\Instruction
 	use Horns\FnCall;
 	use Horns\Symbol;
 	use Horns\Node\Instruction;
+	use Horns\Util;
 
 	/**
 	 * Class Node.Instruction.LogicLess
@@ -836,7 +917,9 @@ namespace Horns\Node\Instruction
 	 */
 	class LogicLess extends Instruction
 	{
+		// todo: $condition and parent::$sym have the same meaning, so leave one of them, remove the other
 		protected $condition = null; // conditional function call, it always will be pseudo FnCall
+		// todo: replace use of $conditionalSymbol with smth like $condition->getArgument(0)
 		protected $conditionalSymbol = false; // instruction symbol, i.e. when {{#inner}} met it will be "inner"
 
 		public function evaluate($ctx, $data)
@@ -867,11 +950,11 @@ namespace Horns\Node\Instruction
 				{
 					$dRef = \Horns\Util::dereferencePath($ctx, $data);
 					$dRef[$resultKey] = $result;
-					array_push($resultKey, $ctx);
+					array_push($ctx, $resultKey);
 
 					foreach($result as $j => $val)
 					{
-						array_push($j, $ctx);
+						array_push($ctx, $j);
 						$value .= static::evaluateInstructionSet($this->sub, $ctx, $data);
 						array_pop($ctx);
 					}
@@ -919,6 +1002,11 @@ namespace Horns\Node\Instruction
 				return $this->sub[count($this->sub) - 1];
 			}
 		}
+
+		public function getBriefDebug()
+		{
+			return ($this->condition ? 'fn:'.$this->condition->getBriefDebug() : '');
+		}
 	}
 
 	/**
@@ -929,6 +1017,7 @@ namespace Horns\Node\Instruction
 	class NestedTemplate extends Instruction
 	{
 		protected $name = false;
+		// todo: $ctxSymbol and parent::$sym have the same meaning, so leave one of them, remove the other
 		protected $ctxSymbol = false;
 
 		public function symbol(Symbol $symbol)
@@ -951,13 +1040,18 @@ namespace Horns\Node\Instruction
 		{
 			$value = '';
 
-			if ($this->name !== false) {
+			if ($this->name !== false)
+			{
 				$template = \Horns::registryGet($this->name->getValue());
-				if ($template) {
+				if($template)
+				{
 					$rData = null;
-					if ($this->ctxSymbol !== false) {
+					if($this->ctxSymbol !== false)
+					{
 						$rData = $this->ctxSymbol->evaluate($ctx, $data);
-					} else {
+					}
+					else
+					{
 						$rData = \Horns\Util::dereferencePath($ctx, $data);
 					}
 
@@ -978,6 +1072,11 @@ namespace Horns\Node\Instruction
 			return array(
 				'nested' => '\\Horns\\Atom\\TemplateInclude',
 			);
+		}
+
+		public function getBriefDebug()
+		{
+			return $this->name.' '.($this->ctxSymbol ? 'fn:'.$this->ctxSymbol->getBriefDebug() : '');
 		}
 	}
 
@@ -1003,7 +1102,7 @@ namespace Horns\Node\Instruction
 		{
 			$this->branches[] = [
 				'cond' => null,
-				'ch' => []
+				'ch' => [], // todo: rename to sub?
 			];
 		}
 
@@ -1101,6 +1200,23 @@ namespace Horns\Node\Instruction
 				'endif' => '\\Horns\\Atom\\EndIf_',
 			);
 		}
+
+		public function getBriefDebug()
+		{
+			return $this->metElse ? 'Full' : 'Short';
+		}
+
+		public function debugOutputSelf()
+		{
+			foreach($this->branches as $k => $branch)
+			{
+				Util::debug('Branch #'.$k.' '.($branch['cond'] ? $branch['cond']->getBriefDebug() : ''));
+				foreach($branch['ch'] as $sub)
+				{
+					$sub->debugOutput();
+				}
+			}
+		}
 	}
 }
 
@@ -1135,7 +1251,7 @@ namespace Horns\Atom
 				$lastAtom = $parser->lastAtom();
 				if($lastAtom['atom'] == 'hash')
 				{
-					$node = new Instruction\LogicLess($parser);
+					$node = new Instruction\LogicLess($parser, false);
 					$node->symbol($spl);
 
 					$parser->getStructure()->forward($node);

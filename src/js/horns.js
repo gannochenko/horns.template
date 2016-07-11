@@ -41,7 +41,7 @@
 
 		return instance;
 	};
-	Horns.debug = function(flag)
+	Horns.toggleDebugMode = function(flag)
 	{
 		this.debugMode = flag;
 	};
