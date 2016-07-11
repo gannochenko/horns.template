@@ -1538,11 +1538,16 @@ namespace Horns\Atom
 
 		public static function append($value, $i, \Horns $parser)
 		{
-			if(!$parser->getStructure()->isCurrent('IfElse') || !$parser->getStructure()->isExpectable('elseif'))
+			$structure = $parser->getStructure();
+
+			$currentIsIfElse = $structure->isCurrent('IfElse');
+			$elseifExpectable = $structure->isExpectable('elseif');
+
+			if(!$currentIsIfElse || !$elseifExpectable)
 			{
 				$parser->showError('Unexpected "elseif"');
 			}
-			$parser->getStructure()->backward();
+			$parser->getStructure()->atoms('elseif');
 		}
 
 		public static function getNextPossible()

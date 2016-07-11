@@ -71,6 +71,23 @@ $helpers = array(
 
 		return $cost;
 	},
+
+	'isPistol' => function($weapon){
+		return $weapon['type'] == 'P';
+	},
+
+	'isRifle' => function($weapon){
+		return $weapon['type'] == 'R';
+	},
+
+	'isArmor' => function($weapon){
+		return $weapon['type'] == 'A';
+	},
+
+	'getFactionName' => function($faction)
+	{
+		return $faction == 'CT' ? 'CT Forces' : 'Terrorists';
+	}
 );
 
 //$template = 'The quick {{personA}} jumps over the lazy {{personB}}';
@@ -85,6 +102,7 @@ ob_start();
 	<h3>Jumping around:</h3> {{#jumps}} {{> jumping}} <br /> {{/jumps}}
 */?>
 
+<?/*
 <form>
 	<h3>Your order is:</h3>
 	<div class="container">
@@ -114,6 +132,20 @@ ob_start();
 		{{/payment}}
 	</select>
 </form>
+*/?>
+
+	<h3>Counter-Strike 1.6 weapons:</h3>
+	<ul>
+	{{#weapon}}
+	<li>{{name}}, type: {{#if isPistol this}}Pistol{{elseif isRifle this}}Rifle{{elseif isArmor this}}Armor{{else}}Unknown{{/if}}<br />
+		Who can buy:<ul>
+			{{#sides}}
+			<li>{{getFactionName this}}{{#../../inManual}}&nbsp;&nbsp;<a href="#{{../../name}}">See game manual</a>{{/../../inManual}}</li>
+			{{/sides}}
+			</ul>
+		</li>
+	{{/weapon}}
+	</ul>
 
 <?
 $template = ob_get_clean();
@@ -123,7 +155,6 @@ $data = [
 	'personA' ' 'brown fox',
 	'personB' ' 'dog',
 ];
-*/
 $data = [
 	'basket'=> [
 		[
@@ -153,8 +184,36 @@ $data = [
 		['title'=> 'Cash', 'value'=> 'cash', 'default'=> true]
 	]
 ];
+*/
+$data = [
+	'weapon' => [
+		[
+			'name' => 'Glock-17',
+			'type' => 'P',
+			'sides' => ['CT'],
+			'inManual' => false
+		],
+		[
+			'name' => 'MP-5',
+			'type' => 'R',
+			'sides' => ['CT', 'T'],
+			'inManual' => true
+		],
+		[
+			'name' => 'AK-47',
+			'type' => 'R',
+			'sides' => ['T']
+		],
+		[
+			'name' => 'Kevlar',
+			'type' => 'A',
+			'sides' => ['CT', 'T'],
+			'inManual' => true
+		]
+	]
+];
 
-\Horns::toggleDebugMode(false);
+\Horns::toggleDebugMode(true);
 \Horns\Util::debug($template);
 
 $parser = Horns::compile($template);
