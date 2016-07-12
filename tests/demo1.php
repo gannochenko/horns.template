@@ -16,6 +16,8 @@
 	<![endif]-->
 
 	<script src="/src/js/horns.js?<?=rand(100, 999)?>"></script>
+	<script src="/tests/logic.js?<?=rand(100, 999)?>"></script>
+	<link rel="stylesheet" href="/tests/style.css" />
 </head>
 <body>
 
@@ -26,7 +28,7 @@
 		<div class="container">
 			<div class="row row-header">
 				<div class="col-xs-12">
-					<h1>Welcome to Horns Template beta!</h1>
+					<h1>Amazing pictures</h1>
 				</div>
 			</div>
 		</div>
@@ -34,43 +36,54 @@
 
 	<div class="container">
 		<div class="row row-content">
-			<div class="col-xs-12">
-				<h2>Comments</h2>
+			<div class="col-xs-12 gallery">
+
+				<?//$time = microtime(true);?>
+
+				<?Horns::templateStart();?>
+					<div class="media">
+						<div class="media-left">
+							<a href="javascript:void(0)">
+								<img class="media-object" src="/tests/data/img/{{src}}" alt="{{name}}" style="max-width: 300px">
+							</a>
+						</div>
+						<div class="media-body">
+							<h2 class="media-heading">{{name}}</h2>
+							<div>
+								{{details}}
+							</div>
+						</div>
+					</div>
+					<div>
+						<?Horns::templateStart();?>
+						{{#comments}}
+						<blockquote>
+							<p>{{text}}</p>
+							<footer>{{author}}, {{formatDate date}}</footer>
+						</blockquote>
+						{{/comments}}
+						<?Horns::templateEnd('comments', true);?>
+					</div>
+				<?Horns::templateEnd('product');?>
+
+				<?=Horns::render('product', $data['product'][0]);?>
+
+				<?//Horns::displayTime('full', $time);?>
 			</div>
 		</div>
-	</div>
-
-	<div class="container">
 		<div class="row row-content">
 			<div class="col-xs-12">
-				<div class="media">
-					<div class="media-left">
-						<a href="#">
-							<img class="media-object" src="..." alt="...">
-						</a>
-					</div>
-					<div class="media-body">
-						<h4 class="media-heading">Media heading</h4>
-						...
-					</div>
+				<div class="btn-group" role="group" aria-label="pagination">
+					<button type="button" class="btn btn-default">1</button>
 				</div>
-
-				<?Horns::templateStart('comment');?>
-					<blockquote>
-						<p>{{text}}</p>
-						<footer>{{author}}, date</footer>
-					</blockquote>
-				<?Horns::templateEnd();?>
-
-			</div>
-		</div>
-		<div class="row row-content">
-			<div class="btn-group" role="group" aria-label="pagination">
-				<button type="button" class="btn btn-default">1</button>
-				<button type="button" class="btn btn-default">2</button>
-				<button type="button" class="btn btn-default">3</button>
 			</div>
 		</div>
 	</div>
+
+	<script>
+		new Application.galleryController(<?=json_encode([
+			'data' => $data,
+		])?>);
+	</script>
 </body>
 </html>

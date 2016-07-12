@@ -14,17 +14,21 @@ namespace
 
 	class Horns
     {
-        private $str =        '';
-        private $struct =     null;
-        private $tag =        false; // todo: move to class, not array
-        private $i =          0;
-        private $chunk =      '';
-        private $helpers =    [];
+		protected $str =        '';
+		protected $struct =     null;
+		protected $tag =        false; // todo: move to class, not array
+		protected $i =          0;
+		protected $chunk =      '';
+		protected $helpers =    [];
 
         protected static $debugMode = false;
 		protected static $profileMode = false;
-        private static $registry = [];
-		private static $atomList = null;
+		protected static $registry = [];
+		protected static $instances = [];
+		protected static $atomList = null;
+		protected static $pageOutputBuffer = [];
+		protected static $pageOutputDepth = 0;
+		protected static $autoTranslation = true;
 
         public function __construct($str)
         {
@@ -381,6 +385,13 @@ namespace
 			return $result;
 		}
 
+		// methods for debugging purposes
+
+		public function outputStructure()
+		{
+			$this->struct->debugOutput();
+		}
+
 		public static function toggleProfileMode($flag)
 		{
 			static::$profileMode = !!$flag;
@@ -396,15 +407,74 @@ namespace
 			return static::$debugMode;
 		}
 
-		public function outputStructure()
-		{
-			$this->struct->debugOutput();
-		}
-
 		public static function displayTime($label, $start)
 		{
 			$amount = microtime(true) - $start;
 			Util::debug($label.' '.round($amount / 60, 7).' sec');
+		}
+
+		// methods for in-page purposes
+
+		public static function toggleAutoTranslation($flag)
+		{
+			static::$autoTranslation = !!$flag;
+		}
+
+		public static function templateStart()
+		{
+			static::$pageOutputDepth += 1;
+			//print_r('>>> '.static::$pageOutputDepth);
+
+			ob_start();
+		}
+
+		public static function templateEnd($name = '')
+		{
+			$name = (string) $name;
+
+			$instance = static::compile(ob_get_clean(), $name);
+			if($name != '')
+			{
+				static::$instances[$name] = $instance;
+				static::$pageOutputBuffer[$name] = $instance->getTemplateString();
+
+				if(static::$pageOutputDepth > 1) // we are inside of the other template, we suppose to make nesting
+				{
+					print('{{> '.$name.'}}');
+				}
+			}
+
+			static::$pageOutputDepth -= 1;
+
+			if(!static::$pageOutputDepth && static::$autoTranslation)
+			{
+				// translate templates into js from translation buffer
+				foreach(static::$pageOutputBuffer as $name => $template)
+				{
+					print('<script type="text/html" id="template-'.$name.'">'.$template.'</script>');
+				}
+
+				static::$pageOutputBuffer = [];
+			}
+
+
+			return $instance;
+		}
+
+		public static function render($name, $data)
+		{
+			return static::$instances[$name]->get($data);
+		}
+
+		public static function export()
+		{
+			$result = array();
+			foreach(static::$instances as $name => $instance)
+			{
+				$result[$name] = $instance->getTemplateString();
+			}
+
+			return $result;
 		}
     }
 }
