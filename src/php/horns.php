@@ -29,6 +29,7 @@ namespace
 		protected static $pageOutputBuffer = [];
 		protected static $pageOutputDepth = 0;
 		protected static $autoTranslation = true;
+		protected static $translationPattern = '<script type="text/html" id="template-{{name}}">{{template}}</script>';
 
         public function __construct($str)
         {
@@ -420,19 +421,28 @@ namespace
 			static::$autoTranslation = !!$flag;
 		}
 
+		public static function setTranslationPattern($pattern)
+		{
+			static::$translationPattern = $pattern;
+		}
+
 		public static function templateStart()
 		{
 			static::$pageOutputDepth += 1;
-			//print_r('>>> '.static::$pageOutputDepth);
-
 			ob_start();
 		}
 
-		public static function templateEnd($name = '')
+		public static function templateEnd($name = '', $renderData = null)
 		{
 			$name = (string) $name;
 
 			$instance = static::compile(ob_get_clean(), $name);
+
+			// tmp
+			$instance->registerHelper('produceButtons', function(){
+				return [['num' => 1], ['num' => 2], ['num' => 3]];
+			});
+
 			if($name != '')
 			{
 				static::$instances[$name] = $instance;
@@ -451,10 +461,20 @@ namespace
 				// translate templates into js from translation buffer
 				foreach(static::$pageOutputBuffer as $name => $template)
 				{
-					print('<script type="text/html" id="template-'.$name.'">'.$template.'</script>');
+					print(str_replace(array(
+						'{{name}}', '{{template}}'
+					), array(
+						$name, $template
+					),
+					static::$translationPattern));
 				}
 
 				static::$pageOutputBuffer = [];
+
+				if($name != '' && $renderData)
+				{
+					print(static::render($name, $renderData));
+				}
 			}
 
 
@@ -1089,7 +1109,7 @@ namespace Horns\Node\Instruction
 			}
 			else
 			{
-				throw new ParseException('Unexpected symbol "'.$symbol->getValue().'"', $this->parser);
+				$this->condition->addArgument($symbol);
 			}
 		}
 

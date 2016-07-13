@@ -35,16 +35,15 @@
 	</header>
 
 	<div class="container">
+		<?Horns::templateStart();?>
 		<div class="row row-content">
 			<div class="col-xs-12 gallery">
-
-				<?//$time = microtime(true);?>
 
 				<?Horns::templateStart();?>
 					<div class="media">
 						<div class="media-left">
 							<a href="javascript:void(0)">
-								<img class="media-object" src="/tests/data/img/{{src}}" alt="{{name}}" style="max-width: 300px">
+								<img class="media-object" src="/tests/data/img/{{src}}" alt="{{name}}" />
 							</a>
 						</div>
 						<div class="media-body">
@@ -56,34 +55,39 @@
 					</div>
 					<div>
 						<?Horns::templateStart();?>
-						{{#comments}}
-						<blockquote>
-							<p>{{text}}</p>
-							<footer>{{author}}, {{formatDate date}}</footer>
-						</blockquote>
-						{{/comments}}
-						<?Horns::templateEnd('comments', true);?>
+							{{#comments}}
+							<blockquote>
+								<p>{{text}}</p>
+								<footer>{{author}}, {{formatDate date}}</footer>
+							</blockquote>
+							{{/comments}}
+						<?Horns::templateEnd('comments');?>
 					</div>
 				<?Horns::templateEnd('product');?>
-
-				<?=Horns::render('product', $data['product'][0]);?>
-
-				<?//Horns::displayTime('full', $time);?>
 			</div>
 		</div>
 		<div class="row row-content">
 			<div class="col-xs-12">
 				<div class="btn-group" role="group" aria-label="pagination">
-					<button type="button" class="btn btn-default">1</button>
+					<?Horns::templateStart();?>
+						{{#produceButtons comments}}
+							<button type="button" class="btn btn-default" data-num="{{num}}">{{num}}</button>
+						{{/produceButtons}}
+					<?Horns::templateEnd('pagination');?>
 				</div>
 			</div>
 		</div>
+		<?Horns::templateEnd('card', $data['product'][0]);?>
 	</div>
 
 	<script>
-		new Application.galleryController(<?=json_encode([
+		new Application.GalleryController(<?=json_encode([
 			'data' => $data,
 		])?>);
 	</script>
 </body>
 </html>
+
+<?//Horns::displayTime('full', $time);?>
+<?//$time = microtime(true);?>
+

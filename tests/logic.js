@@ -1,7 +1,7 @@
 (function(){
 
 	window.Application = {};
-	window.Application.galleryController = function(options)
+	window.Application.GalleryController = function(options)
 	{
 		console.dir(options);
 	}

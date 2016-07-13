@@ -793,7 +793,7 @@
 		}
 		else
 		{
-			this.parser.showError('Unexpected symbol "'+symbol.getValue()+'"');
+			this.condition.addArgument(symbol);
 		}
 	};
 	proto.isExpectable = function(symbol)

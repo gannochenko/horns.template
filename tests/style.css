@@ -1,6 +1,9 @@
 .gallery .media {
     margin-bottom: 20px;
 }
+.gallery .media-object {
+    max-width: 300px;
+}
 
 h2 {
     margin-bottom: 30px;
