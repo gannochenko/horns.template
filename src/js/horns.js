@@ -64,6 +64,24 @@
 			return '';
 		}
 	};
+	Horns.registerGlobalHelper = function(name, cb)
+	{
+		if(typeof this.helpersGlobal == 'undefined')
+		{
+			this.helpersGlobal = {};
+		}
+
+		if(typeof name == 'string' && name.length > 0 && Util.type.isFunction(cb))
+		{
+			this.helpersGlobal[name] = cb;
+		}
+	};
+	Horns.registerGlobalHelpers = function(source)
+	{
+		Util.each(source, function(item, ix){
+			this.registerGlobalHelper(ix, item);
+		}.bind(this));
+	};
 
 	var proto;
 
@@ -329,19 +347,29 @@
 	};
 	proto.registerHelper = function(name, cb)
 	{
-		if(typeof name == 'string' && name.length > 0 && typeof cb == 'function')
+		if(typeof name == 'string' && name.length > 0 && Util.type.isFunction(cb))
 		{
 			this.vars.helpers[name] = cb;
 		}
 	};
 	proto.callHelper = function(name, args, ctx, data)
 	{
-		if(typeof this.vars.helpers[name] == 'undefined' || !Util.type.isFunction(this.vars.helpers[name]))
+		var helper = null;
+
+		if(typeof this.vars.helpers[name] != 'undefined')
 		{
-			return ''; // todo: or may be null?
+			helper = this.vars.helpers[name];
+		}
+		else if(typeof Horns.helpersGlobal[name] != 'undefined')
+		{
+			helper = Horns.helpersGlobal[name];
 		}
 
-		var helper = this.vars.helpers[name];
+		if(helper === null)
+		{
+			return '';
+		}
+
 		var helperCtx = Util.dereferencePath(ctx, data);
 
 		var hArgs = [];
@@ -439,8 +467,6 @@
 				return typeof this.atoms[lastAtom.atom].syn[found.atom] != 'undefined';
 			}
 		}
-
-		return false;
 	};
 	proto.lastAtom = function(found)
 	{
@@ -869,7 +895,7 @@
 			{
 				rData = Util.dereferencePath(ctx, data);
 			}
-			
+
 			value = Horns.render(this.name.getValue(), rData);
 		}
 
@@ -1095,6 +1121,36 @@
 			}
 
 			return result;
+		},
+		each: function(obj, cb)
+		{
+			if(!Util.type.isFunction(cb) || typeof obj == 'undefined' || obj === null)
+			{
+				return;
+			}
+
+			var k;
+
+			if(Util.type.isArray(obj) || Util.type.isIterableObject(obj))
+			{
+				for(k = 0; k < obj.length; k++)
+				{
+					if(obj.hasOwnProperty(k))
+					{
+						cb.apply(obj, [obj[k], k]);
+					}
+				}
+			}
+			else if(Util.type.isPlainObject(obj))
+			{
+				for(k in obj)
+				{
+					if(obj.hasOwnProperty(k))
+					{
+						cb.apply(obj, [obj[k], k]);
+					}
+				}
+			}
 		}
 	}
 

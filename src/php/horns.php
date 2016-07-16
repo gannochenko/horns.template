@@ -67,6 +67,11 @@ namespace
 
             if($name != '')
             {
+	            if(!preg_match("#^[a-z0-9_]+$#i", $name))
+	            {
+		            throw new Exception('Invalid template name: '.$name);
+	            }
+
                 static::$registry[$name] = $instance;
             }
 
@@ -536,6 +541,11 @@ namespace
 			}
 
 			return $result;
+		}
+
+		public static function dataForward($data)
+		{
+			return json_encode($data);
 		}
     }
 }

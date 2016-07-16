@@ -35,7 +35,7 @@
 		</div>
 	</header>
 
-	<div class="container">
+	<div class="container main-container">
 		<?Horns::templateStart();?>
 		<div class="row row-content">
 			<div class="col-xs-12 gallery">
@@ -84,7 +84,7 @@
 	</div>
 
 	<script>
-		new Application.GalleryController(<?=json_encode([
+		new Application.GalleryController(<?=Horns::dataForward([
 			'data' => $data,
 		])?>);
 	</script>
