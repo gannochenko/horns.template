@@ -33,17 +33,36 @@
 	};
 	Horns.compile = function(str, name)
 	{
-		var instance = new Horns(str);
-		if(typeof name == 'string' && name.length)
-		{
-			registry[name] = instance;
-		}
-
-		return instance;
+		return new Horns(str);
 	};
 	Horns.toggleDebugMode = function(flag)
 	{
 		this.debugMode = flag;
+	};
+	Horns.render = function(name, data)
+	{
+		if(typeof this.registry == 'undefined')
+		{
+			this.registry = {};
+		}
+
+		if(typeof this.registry[name] == 'undefined')
+		{
+			var node = document.getElementById('horns-template-'+name);
+			if(node)
+			{
+				this.registry[name] = this.compile(node.innerHTML, name);
+			}
+		}
+
+		if(this.registry[name])
+		{
+			return this.registry[name].get(data);
+		}
+		else
+		{
+			return '';
+		}
 	};
 
 	var proto;
@@ -841,21 +860,17 @@
 
 		if(this.name !== false)
 		{
-			var template = registry[this.name.getValue()];
-			if(template)
+			var rData = null;
+			if(this.ctxSymbol !== false)
 			{
-				var rData = null;
-				if(this.ctxSymbol !== false)
-				{
-					rData = this.ctxSymbol.evaluate(ctx, data);
-				}
-				else
-				{
-					rData = Util.dereferencePath(ctx, data);
-				}
-
-				value = template.get(rData);
+				rData = this.ctxSymbol.evaluate(ctx, data);
 			}
+			else
+			{
+				rData = Util.dereferencePath(ctx, data);
+			}
+			
+			value = Horns.render(this.name.getValue(), rData);
 		}
 
 		return value;
@@ -903,10 +918,12 @@
 
 		return value;
 	};
-	proto.append = function(node){
+	proto.append = function(node)
+	{
 		this.getBranch().ch.push(node);
 	};
-	proto.symbol = function(symbol){
+	proto.symbol = function(symbol)
+	{
 
 		// todo: check that no symbol can go after 'else' atom
 
@@ -921,16 +938,19 @@
 			lastBr.cond.addArgument(symbol);
 		}
 	};
-	proto.newBranch = function(){
+	proto.newBranch = function()
+	{
 		this.branches.push({
 			cond: null,
 			ch: []
 		});
 	};
-	proto.getBranch = function(){
+	proto.getBranch = function()
+	{
 		return this.branches[this.branches.length - 1];
 	};
-	proto.get = function(i){
+	proto.get = function(i)
+	{
 		var br = this.getBranch();
 		if(br.ch.length == 0)
 		{
@@ -1000,8 +1020,6 @@
 	{
 		return this.current.atoms(symbol);
 	};
-
-	var registry = {};
 
 	var Util = {
 		type: {

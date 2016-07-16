@@ -21,6 +21,7 @@ namespace
 		protected $chunk =      '';
 		protected $helpers =    [];
 
+		protected static $helpersGlobal = [];
         protected static $debugMode = false;
 		protected static $profileMode = false;
 		protected static $registry = [];
@@ -29,7 +30,7 @@ namespace
 		protected static $pageOutputBuffer = [];
 		protected static $pageOutputDepth = 0;
 		protected static $autoTranslation = true;
-		protected static $translationPattern = '<script type="text/html" id="template-{{name}}">{{template}}</script>';
+		protected static $translationPattern = '<script type="text/html" id="horns-template-{{name}}">{{template}}</script>';
 
         public function __construct($str)
         {
@@ -115,14 +116,55 @@ namespace
 			}
 		}
 
+		public static function registerGlobalHelper($name, $cb)
+		{
+			$name = trim((string) $name);
+
+			if($name != '' && (is_callable($cb) || $cb instanceof ReflectionMethod))
+			{
+				static::$helpersGlobal[$name] = $cb;
+			}
+		}
+
+		public static function registerGlobalHelpers($source)
+		{
+			if(is_array($source))
+			{
+				foreach($source as $name => $cb)
+				{
+					static::registerGlobalHelper($name, $cb);
+				}
+			}
+			elseif(is_object($source) || class_exists($source))
+			{
+				$reflection = is_object($source) ? new ReflectionObject($source) : new ReflectionClass($source);
+				$methods = $reflection->getMethods(ReflectionMethod::IS_STATIC | ReflectionMethod::IS_PUBLIC);
+
+				foreach($methods as $method)
+				{
+					static::registerGlobalHelper($method->getName(), $method);
+				}
+			}
+		}
+
 		public function callHelper($name, array $args, $ctx, $data)
 		{
-			if(!array_key_exists($name, $this->helpers) || !is_callable($this->helpers[$name]))
+			$helper = null;
+
+			if(array_key_exists($name, $this->helpers))
 			{
-				return ''; // todo: or maybe null?
+				$helper = $this->helpers[$name];
+			}
+			elseif(array_key_exists($name, static::$helpersGlobal))
+			{
+				$helper = static::$helpersGlobal[$name];
 			}
 
-			$helper = $this->helpers[$name];
+			if($helper === null)
+			{
+				return '';
+			}
+
 			$helperCtx =& Util::dereferencePath($ctx, $data);
 
 			$hArgs = [];
@@ -145,6 +187,10 @@ namespace
 			if($helper instanceof Closure && is_object($helperCtx))
 			{
 				return $helper->call($helperCtx, $hArgs);
+			}
+			elseif($helper instanceof ReflectionMethod)
+			{
+				return $helper->invokeArgs(null, $hArgs);
 			}
 			else
 			{
@@ -437,11 +483,6 @@ namespace
 			$name = (string) $name;
 
 			$instance = static::compile(ob_get_clean(), $name);
-
-			// tmp
-			$instance->registerHelper('produceButtons', function(){
-				return [['num' => 1], ['num' => 2], ['num' => 3]];
-			});
 
 			if($name != '')
 			{
@@ -974,7 +1015,7 @@ namespace Horns\Node
 				$value = $this->sym->evaluate($ctx, $data);
 			}
 
-			$value .= static::evaluateInstructionSet($this->sub, $ctx, $data);
+			$value .= (string) static::evaluateInstructionSet($this->sub, $ctx, $data);
 
 			return $this->escape ? htmlspecialchars($value) : $value;
 		}

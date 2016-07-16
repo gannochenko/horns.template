@@ -23,6 +23,7 @@
 
 	<?require("../src/php/horns.php");?>
 	<?require("data/demo1.php");?>
+	<?require("helpersources.php");?>
 
 	<header class="jumbotron">
 		<div class="container">
@@ -58,7 +59,7 @@
 							{{#comments}}
 							<blockquote>
 								<p>{{text}}</p>
-								<footer>{{author}}, {{formatDate date}}</footer>
+								<footer>{{author}}, {{convertTimeStamp date}}</footer>
 							</blockquote>
 							{{/comments}}
 						<?Horns::templateEnd('comments');?>
@@ -73,11 +74,13 @@
 						{{#produceButtons comments}}
 							<button type="button" class="btn btn-default" data-num="{{num}}">{{num}}</button>
 						{{/produceButtons}}
-					<?Horns::templateEnd('pagination');?>
+					<?Horns::templateEnd('comment_pagination');?>
 				</div>
 			</div>
 		</div>
 		<?Horns::templateEnd('card', $data['product'][0]);?>
+
+		<div id="same"></div>
 	</div>
 
 	<script>
