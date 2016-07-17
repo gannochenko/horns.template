@@ -39,7 +39,7 @@
 	{
 		this.debugMode = flag;
 	};
-	Horns.render = function(name, data)
+	Horns.render = function(name, data, returnFragment)
 	{
 		if(typeof this.registry == 'undefined')
 		{
@@ -57,7 +57,13 @@
 
 		if(this.registry[name])
 		{
-			return this.registry[name].get(data);
+			var html = this.registry[name].get(data);
+			if(returnFragment)
+			{
+				return this.makeDocumentFragment(html);
+			}
+
+			return html;
 		}
 		else
 		{
@@ -81,6 +87,38 @@
 		Util.each(source, function(item, ix){
 			this.registerGlobalHelper(ix, item);
 		}.bind(this));
+	};
+	/**
+	 * @param html
+	 * @private
+	 */
+	Horns.makeDocumentFragment = function(html)
+	{
+		var container = document.createElement('div');
+
+		if(html.search(/^<\s*(tr|th)[^<]*>/) >= 0)
+		{
+			container.innerHTML = '<table><tbody>'+html+'</tbody></table>';
+			container = container.childNodes[0].childNodes[0];
+		}
+		else if(html.search(/^<\s*td[^<]*>/) >= 0)
+		{
+			container.innerHTML = '<table><tbody><tr>'+html+'</tr></tbody></table>';
+			container = container.childNodes[0].childNodes[0].childNodes[0];
+		}
+		else
+		{
+			container.innerHTML = html;
+		}
+
+		var d = document.createDocumentFragment();
+
+		while(container.childNodes.length)
+		{
+			d.appendChild(container.childNodes[0]);
+		}
+
+		return d;
 	};
 
 	var proto;

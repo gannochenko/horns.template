@@ -25,7 +25,7 @@ $data = [
 				],
 				[
 					'author' => 'Buy new pills!',
-					'text' => 'I would not have believed in it, if I had not tried it by myself. These new pills...',
+					'text' => 'I would not have believed in, if I had not tried it by myself. These new pills...',
 					'date' => $time + 3600,
 				],
 			]

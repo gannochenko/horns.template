@@ -48,7 +48,9 @@
 			var container = document.getElementById('product-comments');
 			if(container)
 			{
-				container.innerHTML += Horns.render('comment', comment);
+				var f = Horns.render('comment', comment, true);
+
+				container.appendChild(f);
 			}
 		},
 
