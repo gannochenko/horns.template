@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Sample catalog</title>
+	<title>European gothic</title>
 
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 	<script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
@@ -25,72 +25,95 @@
 	<?require("data/demo1.php");?>
 	<?require("helpersources.php");?>
 
+	<?$currentId = array_key_exists('id', $_REQUEST) ? intval($_REQUEST['id']) : $data['product'][0]['id'];?>
+
 	<header class="jumbotron">
 		<div class="container">
 			<div class="row row-header">
 				<div class="col-xs-12">
-					<h1>Amazing pictures</h1>
+					<h1>European gothic</h1>
 				</div>
 			</div>
 		</div>
 	</header>
 
 	<div class="container main-container">
-		<?Horns::templateStart();?>
-		<div class="row row-content">
-			<div class="col-xs-12 gallery">
 
-				<?Horns::templateStart();?>
-					<div class="media">
-						<div class="media-left">
-							<a href="javascript:void(0)">
-								<img class="media-object" src="/tests/data/img/{{src}}" alt="{{name}}" />
-							</a>
-						</div>
-						<div class="media-body">
-							<h2 class="media-heading">{{name}}</h2>
-							<div>
-								{{details}}
-							</div>
-						</div>
+		<?Horns::templateStart();?>
+			<div class="row row-content image-nav">
+				<div class="col-xs-12">
+					<div class="btn-group" role="group" aria-label="pagination">
+						{{#produceNavButtons this}}
+						<button type="button" class="btn btn-default" data-id="{{imgId}}">{{num}}</button>
+						{{/produceNavButtons}}
 					</div>
-					<div>
-						<?Horns::templateStart();?>
-							{{#comments}}
-							<blockquote>
-								<p>{{text}}</p>
-								<footer>{{author}}, {{convertTimeStamp date}}</footer>
-							</blockquote>
-							{{/comments}}
-						<?Horns::templateEnd('comments');?>
-					</div>
-				<?Horns::templateEnd('product');?>
-			</div>
-		</div>
-		<div class="row row-content">
-			<div class="col-xs-12">
-				<div class="btn-group" role="group" aria-label="pagination">
-					<?Horns::templateStart();?>
-						{{#produceButtons comments}}
-							<button type="button" class="btn btn-default" data-num="{{num}}">{{num}}</button>
-						{{/produceButtons}}
-					<?Horns::templateEnd('comment_pagination');?>
 				</div>
 			</div>
+		<?Horns::templateEnd('product_nav', $data['product']);?>
+
+		<div class="image-here">
+			<?Horns::templateStart();?>
+				<div class="row row-content">
+					<div class="col-xs-12 gallery">
+						<div class="media">
+							<div class="media-left">
+								<img class="media-object" src="/tests/data/img/{{src}}" alt="{{name}}" />
+							</div>
+							<div class="media-body">
+								<h2 class="media-heading">{{name}}</h2>
+								<div>
+									{{details}}
+								</div>
+							</div>
+						</div>
+						<div id="product-comments">
+							{{#comments}}
+								<?Horns::templateStart();?>
+									<blockquote>
+										<p>{{text}}</p>
+										<footer>{{author}}, {{convertTimeStamp date}}</footer>
+									</blockquote>
+								<?Horns::templateEnd('comment');?>
+							{{/comments}}
+						</div>
+					</div>
+				</div>
+			<?Horns::templateEnd('card', \HelperSource::getDataById($currentId, $data['product']));?>
 		</div>
-		<?Horns::templateEnd('card', $data['product'][0]);?>
+
+		<div class="row row-content">
+			<div class="col-sm-6 col-xs-12">
+				<form class="form-horizontal comment-form">
+					<div class="form-group">
+						<div class="col-sm-12">
+							<input name="author" type="text" class="form-control" placeholder="Name" required="required">
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="col-sm-12">
+							<textarea name="text" class="form-control" placeholder="Comment text" required="required"></textarea>
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="col-sm-12">
+							<button type="submit" class="btn btn-default">Post comment</button>
+						</div>
+					</div>
+				</form>
+			</div>
+		</div>
+
+		<?=Horns::render('product_nav', $data['product']);?>
 
 		<div id="same"></div>
 	</div>
 
 	<script>
-		new Application.GalleryController(<?=Horns::dataForward([
+		window.gc = new Application.GalleryController(<?=Horns::dataForward([
 			'data' => $data,
+			'current' => $currentId,
 		])?>);
 	</script>
 </body>
 </html>
-
-<?//Horns::displayTime('full', $time);?>
-<?//$time = microtime(true);?>
 
