@@ -16,14 +16,14 @@
 	<![endif]-->
 
 	<script src="/src/js/horns.js?<?=rand(100, 999)?>"></script>
-	<script src="/tests/logic.js?<?=rand(100, 999)?>"></script>
-	<link rel="stylesheet" href="/tests/style.css" />
+	<script src="/tests/demo/logic.js?<?=rand(100, 999)?>"></script>
+	<link rel="stylesheet" href="/tests/demo/style.css" />
 </head>
 <body>
 
-	<?require("../src/php/horns.php");?>
-	<?require("data/demo1.php");?>
-	<?require("helpersources.php");?>
+	<?require("../../src/php/horns.php");?>
+	<? require("./assets/data.php");?>
+	<?require("./helpersources.php");?>
 
 	<?$currentId = array_key_exists('id', $_REQUEST) ? intval($_REQUEST['id']) : $data['product'][0]['id'];?>
 
@@ -57,7 +57,7 @@
 					<div class="col-xs-12 gallery">
 						<div class="media">
 							<div class="media-left">
-								<img class="media-object" src="/tests/data/img/{{src}}" alt="{{name}}" />
+								<img class="media-object" src="/tests/demo/assets/img/{{src}}" alt="{{name}}" />
 							</div>
 							<div class="media-body">
 								<h2 class="media-heading">{{name}}</h2>
