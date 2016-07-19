@@ -44,7 +44,7 @@
 				<div class="col-xs-12">
 					<div class="btn-group" role="group" aria-label="pagination">
 						{{#produceNavButtons this}}
-						<button type="button" class="btn btn-default" data-id="{{imgId}}">{{num}}</button>
+							<button type="button" class="btn btn-default" data-id="{{imgId}}">{{num}}</button>
 						{{/produceNavButtons}}
 					</div>
 				</div>
