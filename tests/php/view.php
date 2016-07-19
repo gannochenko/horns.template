@@ -40,10 +40,9 @@ foreach(Tests::getAll() as $test)
 {
 	//\Horns\Util::debug($test['template']);
 	$parser = Horns::compile($test['template'], $test['name']);
-
 	//$parser->outputStructure();
-	print('<pre>');print(htmlspecialchars($parser->get($test['data'])));print('</pre>');
-	//print($parser->get($test['data']));
+	
+	print($parser->get($test['data']));
 	print('<hr />');
 }
 
