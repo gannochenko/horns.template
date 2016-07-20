@@ -6,7 +6,10 @@
 
 	<link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.0.0.css">
 	<script src="https://code.jquery.com/qunit/qunit-2.0.0.js"></script>
-	<script src="./../../src/js/horns.js"></script>
+	<script>
+		document.write('<script src="../../src/js/horns.js?'+Math.floor(Math.random()*3000)+'"></scr'+'ipt>');
+		document.write('<script src="tests.js?'+Math.floor(Math.random()*3000)+'"></scr'+'ipt>');
+	</script>
 
 	<!-- see http://qunitjs.com/ -->
 	<script>
