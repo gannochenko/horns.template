@@ -316,19 +316,20 @@ class Tests
 					],
 				],
 				'template' => '
-			<h3>Counter-Strike 1.6 weapons:</h3>
-			<ul>
-			{{#weapon}}
-			<li>{{name}}, type: {{#if isPistol this}}Pistol{{elseif isRifle this}}Rifle{{elseif isArmor this}}Armor{{else}}Unknown{{/if}}<br />
-				Who can buy:<ul>
-					{{#sides}}
-					<li>{{getFactionName this}}{{#../../inManual}}&nbsp;&nbsp;<a href="#{{../../name}}">See game manual</a>{{/../../inManual}}</li>
-					{{/sides}}
+					<h3>Counter-Strike 1.6 weapons:</h3>
+					<ul>
+						{{#weapon}}
+						<li>{{name}}, type: {{#if isPistol this}}Pistol{{elseif isRifle this}}Rifle{{elseif isArmor this}}Armor{{else}}Unknown{{/if}}<br />
+							Who can buy:
+							<ul>
+								{{#sides}}
+									<li>{{getFactionName this}}{{#../../inManual}}&nbsp;&nbsp;<a href="#{{../../name}}">See game manual</a>{{/../../inManual}}</li>
+								{{/sides}}
+							</ul>
+						</li>
+					{{/weapon}}
 					</ul>
-				</li>
-			{{/weapon}}
-			</ul>
-			',
+				',
 				'name' => 'cs',
 				'result' => '
 					<h3>Counter-Strike 1.6 weapons:</h3>

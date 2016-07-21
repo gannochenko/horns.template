@@ -28,8 +28,8 @@ namespace
 		protected static $instances = [];
 		protected static $atomList = null;
 		protected static $pageOutputBuffer = [];
-		protected static $pageOutputDepth = 0;
-		protected static $autoTranslation = true;
+		protected static $nameStack = [];
+		protected static $jsAutoForward = true;
 		protected static $translationPattern = '<script type="text/html" id="horns-template-{{name}}">{{template}}</script>';
 
         public function __construct($str)
@@ -58,22 +58,11 @@ namespace
 			return static::$atomList;
 		}
 
-        public static function compile($str, $name = '')
+        public static function compile($str)
         {
 	        $time = microtime(true);
 
             $instance = new static($str);
-            $name = trim((string) $name);
-
-            if($name != '')
-            {
-	            if(!preg_match("#^[a-z0-9_]+$#i", $name))
-	            {
-		            throw new Exception('Invalid template name: '.$name);
-	            }
-
-                static::$registry[$name] = $instance;
-            }
 
 	        if(static::$profileMode)
 	        {
@@ -82,6 +71,21 @@ namespace
 
 		    return $instance;
         }
+
+		public static function register($name, $template)
+		{
+			$name = trim((string) $name);
+
+			if($name != '')
+			{
+				if(!preg_match("#^[a-z0-9_]+$#i", $name))
+				{
+					throw new Exception('Invalid template name: '.$name);
+				}
+
+				static::$registry[$name] = $template;
+			}
+		}
 
 		public static function registryGet($name)
 		{
@@ -467,9 +471,9 @@ namespace
 
 		// methods for in-page purposes
 
-		public static function toggleAutoTranslation($flag)
+		public static function toggleJSAutoForward($flag)
 		{
-			static::$autoTranslation = !!$flag;
+			static::$jsAutoForward = !!$flag;
 		}
 
 		public static function setTranslationPattern($pattern)
@@ -477,58 +481,85 @@ namespace
 			static::$translationPattern = $pattern;
 		}
 
-		public static function templateStart()
+		public static function templateStart($name)
 		{
-			static::$pageOutputDepth += 1;
+			$name = trim((string) $name);
+			if($name == '')
+			{
+				throw new Exception('Name should not be empty');
+			}
+
+			array_push(static::$nameStack, $name);
+
+			print_r(implode('.', static::$nameStack).PHP_EOL);
+
 			ob_start();
 		}
 
-		public static function templateEnd($name = '', $renderData = null)
+		public static function templateEnd($renderData = null, $returnInstance = false)
 		{
-			$name = (string) $name;
-
-			$instance = static::compile(ob_get_clean(), $name);
-
-			if($name != '')
+			if(!count(static::$nameStack))
 			{
-				static::$instances[$name] = $instance;
-				static::$pageOutputBuffer[$name] = $instance->getTemplateString();
-
-				if(static::$pageOutputDepth > 1) // we are inside of the other template, we suppose to make nesting
-				{
-					print('{{> '.$name.'}}');
-				}
+				throw new Exception('Illegal nesting of templateEnd() and templateStart() calls');
 			}
 
-			static::$pageOutputDepth -= 1;
+			$name = array_pop(static::$nameStack);
 
-			if(!static::$pageOutputDepth && static::$autoTranslation)
+			$templateString = ob_get_clean();
+			static::register($name, $templateString);
+
+			print_r('>>> '.$name.PHP_EOL);
+
+			if(!count(static::$nameStack)) // we are at the zero level of template nesting
 			{
-				// translate templates into js from translation buffer
-				foreach(static::$pageOutputBuffer as $name => $template)
+				if(static::$jsAutoForward)
 				{
-					print(str_replace(array(
-						'{{name}}', '{{template}}'
-					), array(
-						$name, $template
-					),
-					static::$translationPattern));
+					// forward templates to js, if enabled
+					foreach(static::$pageOutputBuffer as $templateName => $templateString)
+					{
+						print(str_replace(array(
+							'{{name}}', '{{template}}'
+						), array(
+							$templateName, $templateString
+						),
+							static::$translationPattern));
+					}
+
+					static::$pageOutputBuffer = [];
 				}
 
-				static::$pageOutputBuffer = [];
-
-				if($name != '' && $renderData)
+				// render entire template structure with all nesting templates
+				if($renderData)
 				{
 					print(static::render($name, $renderData));
 				}
 			}
+			else // we are inside of the other template, we suppose to make nesting
+			{
+				print('{{> '.$name.'}}');
+			}
 
+			if($returnInstance && $name)
+			{
+				static::$instances[$name] = static::compile(static::$instances[$name]);
+				return static::$instances[$name];
+			}
 
-			return $instance;
+			return null;
 		}
 
 		public static function render($name, $data)
 		{
+			if(!array_key_exists($name, static::$instances))
+			{
+				return '';
+			}
+
+			if(!(static::$instances[$name] instanceof static))
+			{
+				static::$instances[$name] = static::compile(static::$instances[$name]);
+			}
+
 			return static::$instances[$name]->get($data);
 		}
 

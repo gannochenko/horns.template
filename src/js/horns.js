@@ -31,7 +31,8 @@
 			console.dir(this.struct);
 		}
 	};
-	Horns.compile = function(str, name)
+	Horns.helpersGlobal = {};
+	Horns.compile = function(str)
 	{
 		return new Horns(str);
 	};

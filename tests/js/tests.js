@@ -69,7 +69,8 @@ window.Tests = {
 					personB: 'dog'
 				},
 				template: 'The quick {{{quote personA}}} jumps over the lazy {{{quote personB}}}',
-				name: 'jumping'
+				name: 'jumping',
+				result: 'The quick &laquo;brown fox&raquo; jumps over the lazy &laquo;dog&raquo;'
 			},
 			{
 				data: {
@@ -94,15 +95,16 @@ window.Tests = {
 				},
 				template: "<h3>Dear {{guestName}}, your menu for today is:</h3>" +
 				"<ul>" +
-				"{{#meal}}" +
-				"<li>" +
-				"<b>{{ucFirst title}}</b><br />" +
-				"Time: {{time}}<br />" +
-				"Dishes: {{implode menu}}" +
-				"</li>" +
-				"{{/meal}}" +
+					"{{#meal}}" +
+						"<li>" +
+							"<b>{{ucFirst title}}</b><br />" +
+							"Time: {{time}}<br />" +
+							"Dishes: {{implode menu}}" +
+						"</li>" +
+					"{{/meal}}" +
 				"</ul>",
-				name: 'menu'
+				name: 'menu',
+				result: '<h3>Dear Steve, your menu for today is:</h3><ul><li><b>Breakfast</b><br />Time: 9:00 am<br />Dishes: Cup of coffee, Sandwich, Cigarette</li><li><b>Dinner</b><br />Time: 1:00 pm<br />Dishes: Vegetable salad, Mushroom soup, Cherry compote, Bread</li><li><b>Supper</b><br />Time: 6:00 pm<br />Dishes: Sausages with roasted potatoes, Cup of tea, Apple pie, Good movie to watch</li></ul>'
 			},
 			{
 				data: {
@@ -135,34 +137,36 @@ window.Tests = {
 						{title: 'Cash', value: 'cash', default: true}
 					]
 				},
-				template: "<form>" +
-					"<h3>Your order is:</h3>" +
-					"<div class=\"container\">" +
-					"{{#if isNotEmpty basket}}" +
-					"<table cellpadding=\"0\" cellspacing=\"0\">" +
-					"<thead><tr><th>Name</th><th>Price</th><th>Quantity</th><th>Cost</th></tr></thead>" +
-					"<tbody>" +
-					"{{#basket}}" +
-					"<tr>" +
-					"<td>{{name}}</td>" +
-					"<td>${{price}}</td>" +
-					"<td>{{quantity}}</td>" +
-					"<td>{{#if discount}}<s>{{/if}}${{getCost this this}}{{#if discount}}</s> (with discount: ${{getDiscountCost this}}){{/if}}</td>" +
-					"</tr>" +
-					"{{/basket}}" +
-					"</tbody>" +
-					"</table>" +
-					"{{else}}<span class=\"red\">Your basket is empty</span>{{/if}}" +
-					"</div>" +
-					"Total price: <span class=\"green\">${{totalPrice basket}}</span><br /><br />" +
-					"Pay with: " +
-					"<select>" +
-					"{{#payment}}" +
-					"<option value=\"{{value}}\" {{#if default}} selected=\"selected\"{{/if}}>{{title}}</option>"+
-					"{{/payment}}" +
-					"</select>" +
-				"</form>",
-				name: 'basket'
+				template:
+					"<form>" +
+						"<h3>Your order is:</h3>" +
+						"<div class=\"container\">" +
+							"{{#if isNotEmpty basket}}" +
+							"<table cellpadding=\"0\" cellspacing=\"0\">" +
+								"<thead><tr><th>Name</th><th>Price</th><th>Quantity</th><th>Cost</th></tr></thead>" +
+								"<tbody>" +
+									"{{#basket}}" +
+									"<tr>" +
+										"<td>{{name}}</td>" +
+										"<td>${{price}}</td>" +
+										"<td>{{quantity}}</td>" +
+										"<td>{{#if discount}}<s>{{/if}}${{getCost this this}}{{#if discount}}</s> (with discount: ${{getDiscountCost this}}){{/if}}</td>" +
+									"</tr>" +
+									"{{/basket}}" +
+								"</tbody>" +
+							"</table>" +
+							"{{else}}<span class=\"red\">Your basket is empty</span>{{/if}}" +
+						"</div>" +
+						"Total price: <span class=\"green\">${{totalPrice basket}}</span><br /><br />" +
+						"Pay with: " +
+						"<select>" +
+							"{{#payment}}" +
+								"<option value=\"{{value}}\" {{#if default}} selected=\"selected\"{{/if}}>{{title}}</option>"+
+							"{{/payment}}" +
+						"</select>" +
+					"</form>",
+				name: 'cart',
+				result: '<form><h3>Your order is:</h3><div class=\"container\"><table cellpadding=\"0\" cellspacing=\"0\"><thead><tr><th>Name</th><th>Price</th><th>Quantity</th><th>Cost</th></tr></thead><tbody><tr><td>Fish&amp;Chips</td><td>$10</td><td>3</td><td>$30</td></tr><tr><td>Pair of socks</td><td>$700</td><td>5</td><td>$3500</td></tr><tr><td>Microwave owen</td><td>$1500</td><td>1</td><td>$1500</td></tr><tr><td>Mercedes 600</td><td>$900000000</td><td>1</td><td><s>$900000000</s> (with discount: $27000000)</td></tr></tbody></table></div>Total price: <span class=\"green\">$27005030</span><br /><br />Pay with: <select><option value=\"card\" >Visa/Master Card</option><option value=\"cash\"  selected=\"selected\">Cash</option></select></form>'
 			},
 			{
 				data: {
@@ -185,6 +189,8 @@ window.Tests = {
 					]
 				},
 				template: '<la>{{getCostAlt basket.0 this}}</la>',
+				name: 'basket_sum',
+				result: '<la>30 of Cash</la>'
 			},
 			{
 				data: {
@@ -214,19 +220,21 @@ window.Tests = {
 						}
 					]
 				},
-				template: "<h3>Counter-Strike 1.6 weapons:</h3>" +
-				"<ul>" +
-				"{{#weapon}}" +
-				"<li>{{name}}, type: {{#if isPistol this}}Pistol{{elseif isRifle this}}Rifle{{elseif isArmor this}}Armor{{else}}Unknown{{/if}}<br />" +
-				"Who can buy:<ul>" +
-				"{{#sides}}" +
-				"<li>{{getFactionName this}}{{#../../inManual}}&nbsp;&nbsp;<a href=\"#{{../../name}}\">See game manual</a>{{/../../inManual}}</li>" +
-				"{{/sides}}" +
-				"</ul>" +
-				"</li>" +
-				"{{/weapon}}" +
-				"</ul>",
-				name: 'cs'
+				template:
+					"<h3>Counter-Strike 1.6 weapons:</h3>" +
+					"<ul>" +
+						"{{#weapon}}" +
+							"<li>{{name}}, type: {{#if isPistol this}}Pistol{{elseif isRifle this}}Rifle{{elseif isArmor this}}Armor{{else}}Unknown{{/if}}<br />" +
+								"Who can buy:<ul>" +
+									"{{#sides}}" +
+										"<li>{{getFactionName this}}{{#../../inManual}}&nbsp;&nbsp;<a href=\"#{{../../name}}\">See game manual</a>{{/../../inManual}}</li>" +
+									"{{/sides}}" +
+								"</ul>" +
+							"</li>" +
+						"{{/weapon}}" +
+					"</ul>",
+				name: 'cs',
+				result: '<h3>Counter-Strike 1.6 weapons:</h3><ul><li>Glock-17, type: Pistol<br />Who can buy:<ul><li>CT Forces</li></ul></li><li>MP-5, type: Rifle<br />Who can buy:<ul><li>CT Forces&nbsp;&nbsp;<a href=\"#MP-5\">See game manual</a></li><li>Terrorists&nbsp;&nbsp;<a href=\"#MP-5\">See game manual</a></li></ul></li><li>AK-47, type: Rifle<br />Who can buy:<ul><li>Terrorists</li></ul></li><li>Kevlar, type: Armor<br />Who can buy:<ul><li>CT Forces&nbsp;&nbsp;<a href=\"#Kevlar\">See game manual</a></li><li>Terrorists&nbsp;&nbsp;<a href=\"#Kevlar\">See game manual</a></li></ul></li></ul>'
 			},
 			{
 				data: {
@@ -246,7 +254,8 @@ window.Tests = {
 					]
 				},
 				template: "<h3>Jumping around:</h3> {{#jumps}} {{> jumping}} <br /> {{/jumps}}",
-				name: 'jumpingPairs'
+				name: 'jumpingPairs',
+				result: ''
 			}
 		];
 	}

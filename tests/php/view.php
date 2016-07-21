@@ -39,10 +39,10 @@ include('tests.php');
 foreach(Tests::getAll() as $test)
 {
 	//\Horns\Util::debug($test['template']);
-	$parser = Horns::compile($test['template'], $test['name']);
+	Horns::register($test['template'], $test['name']);
+	$parser = Horns::render($test['name'], $test['data']);
 	//$parser->outputStructure();
 	
-	print($parser->get($test['data']));
 	print('<hr />');
 }
 

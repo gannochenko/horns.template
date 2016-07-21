@@ -39,7 +39,7 @@
 
 	<div class="container main-container">
 
-		<?Horns::templateStart();?>
+		<?Horns::templateStart('product_nav');?>
 			<div class="row row-content image-nav">
 				<div class="col-xs-12">
 					<div class="btn-group" role="group" aria-label="pagination">
@@ -49,10 +49,10 @@
 					</div>
 				</div>
 			</div>
-		<?Horns::templateEnd('product_nav', $data['product']);?>
+		<?Horns::templateEnd($data['product']);?>
 
 		<div class="image-here">
-			<?Horns::templateStart();?>
+			<?Horns::templateStart('card');?>
 				<div class="row row-content">
 					<div class="col-xs-12 gallery">
 						<div class="media">
@@ -68,17 +68,17 @@
 						</div>
 						<div id="product-comments">
 							{{#comments}}
-								<?Horns::templateStart();?>
+								<?Horns::templateStart('comment');?>
 									<blockquote>
 										<p>{{text}}</p>
 										<footer>{{author}}, {{convertTimeStamp date}}</footer>
 									</blockquote>
-								<?Horns::templateEnd('comment');?>
+								<?Horns::templateEnd();?>
 							{{/comments}}
 						</div>
 					</div>
 				</div>
-			<?Horns::templateEnd('card', \HelperSource::getDataById($currentId, $data['product']));?>
+			<?Horns::templateEnd(\HelperSource::getDataById($currentId, $data['product']));?>
 		</div>
 
 		<div class="row row-content">
