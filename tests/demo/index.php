@@ -22,7 +22,7 @@
 <body>
 
 	<?require("../../src/php/horns.php");?>
-	<? require("./assets/data.php");?>
+	<?require("./assets/data.php");?>
 	<?require("./helpersources.php");?>
 
 	<?$currentId = array_key_exists('id', $_REQUEST) ? intval($_REQUEST['id']) : $data['product'][0]['id'];?>
