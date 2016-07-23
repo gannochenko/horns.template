@@ -49,15 +49,22 @@
 
 		if(typeof this.registry[name] == 'undefined')
 		{
+			// have to search
 			var node = document.getElementById('horns-template-'+name);
 			if(node)
 			{
-				this.registry[name] = this.compile(node.innerHTML, name);
+				this.register(name, node.innerHTML);
 			}
 		}
 
 		if(this.registry[name])
 		{
+			// it could be a string or a compiled template
+			if(!(this.registry[name] instanceof Horns))
+			{
+				this.registry[name] = this.compile(this.registry[name]);
+			}
+
 			var html = this.registry[name].get(data);
 			if(returnFragment)
 			{
@@ -69,6 +76,25 @@
 		else
 		{
 			return '';
+		}
+	};
+	Horns.register = function(name, string)
+	{
+		if(typeof name != 'undefined' && name !== null)
+		{
+			name = name.toString().trim();
+
+			if(!name.match(new RegExp('^[a-z0-9_]+$', 'i')))
+			{
+				throw new Error('Invalid template name: '+name);
+			}
+
+			if(typeof this.registry == 'undefined')
+			{
+				this.registry = {};
+			}
+
+			this.registry[name] = string;
 		}
 	};
 	Horns.registerGlobalHelper = function(name, cb)

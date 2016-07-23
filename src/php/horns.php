@@ -25,7 +25,6 @@ namespace
         protected static $debugMode = false;
 		protected static $profileMode = false;
 		protected static $registry = [];
-		protected static $instances = [];
 		protected static $atomList = null;
 		protected static $pageOutputBuffer = [];
 		protected static $nameStack = [];
@@ -85,11 +84,6 @@ namespace
 
 				static::$registry[$name] = $template;
 			}
-		}
-
-		public static function registryGet($name)
-		{
-			return static::$registry[$name];
 		}
 
 		public function getCurrentParseOffset()
@@ -491,8 +485,6 @@ namespace
 
 			array_push(static::$nameStack, $name);
 
-			print_r(implode('.', static::$nameStack).PHP_EOL);
-
 			ob_start();
 		}
 
@@ -503,12 +495,11 @@ namespace
 				throw new Exception('Illegal nesting of templateEnd() and templateStart() calls');
 			}
 
-			$name = array_pop(static::$nameStack);
-
 			$templateString = ob_get_clean();
-			static::register($name, $templateString);
 
-			print_r('>>> '.$name.PHP_EOL);
+			$name = array_pop(static::$nameStack);
+			static::register($name, $templateString);
+			static::$pageOutputBuffer[$name] = $templateString;
 
 			if(!count(static::$nameStack)) // we are at the zero level of template nesting
 			{
@@ -522,7 +513,7 @@ namespace
 						), array(
 							$templateName, $templateString
 						),
-							static::$translationPattern));
+						static::$translationPattern));
 					}
 
 					static::$pageOutputBuffer = [];
@@ -541,8 +532,8 @@ namespace
 
 			if($returnInstance && $name)
 			{
-				static::$instances[$name] = static::compile(static::$instances[$name]);
-				return static::$instances[$name];
+				static::$registry[$name] = static::compile(static::$registry[$name]);
+				return static::$registry[$name];
 			}
 
 			return null;
@@ -550,25 +541,25 @@ namespace
 
 		public static function render($name, $data)
 		{
-			if(!array_key_exists($name, static::$instances))
+			if(!array_key_exists($name, static::$registry))
 			{
 				return '';
 			}
 
-			if(!(static::$instances[$name] instanceof static))
+			if(!(static::$registry[$name] instanceof static))
 			{
-				static::$instances[$name] = static::compile(static::$instances[$name]);
+				static::$registry[$name] = static::compile(static::$registry[$name]);
 			}
 
-			return static::$instances[$name]->get($data);
+			return static::$registry[$name]->get($data);
 		}
 
 		public static function export()
 		{
 			$result = array();
-			foreach(static::$instances as $name => $instance)
+			foreach(static::$registry as $name => $instance)
 			{
-				$result[$name] = $instance->getTemplateString();
+				$result[$name] = $instance instanceof Horns ? $instance->getTemplateString() : $instance;
 			}
 
 			return $result;
@@ -1253,21 +1244,17 @@ namespace Horns\Node\Instruction
 
 			if ($this->name !== false)
 			{
-				$template = \Horns::registryGet($this->name->getValue());
-				if($template)
+				$rData = null;
+				if($this->ctxSymbol !== false)
 				{
-					$rData = null;
-					if($this->ctxSymbol !== false)
-					{
-						$rData = $this->ctxSymbol->evaluate($ctx, $data);
-					}
-					else
-					{
-						$rData = Util::dereferencePath($ctx, $data);
-					}
-
-					$value = $template->get($rData);
+					$rData = $this->ctxSymbol->evaluate($ctx, $data);
 				}
+				else
+				{
+					$rData = Util::dereferencePath($ctx, $data);
+				}
+
+				$value = \Horns::render($this->name->getValue(), $rData);
 			}
 
 			return $value;

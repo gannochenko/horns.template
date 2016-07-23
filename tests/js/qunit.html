@@ -21,12 +21,11 @@
 		{
 			if(tests.hasOwnProperty(k))
 			{
+				Horns.register(tests[k].name, tests[k].template);
+
 				(function(test){
 					QUnit.test('Template: '+test.name, function(assert){
-
-						var template = Horns.compile(test.template);
-
-						assert.equal(template.get(test.data), test.result);
+						assert.equal(Horns.render(test.name, test.data), test.result);
 					});
 				})(tests[k]);
 			}

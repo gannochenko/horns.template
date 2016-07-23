@@ -1,3 +1,0 @@
-<?$sample = "<span id=\"lentest\">\x20\x20\x02First node\x03\x02SecondNode\x03\x20.\x20<span id=\"hz\"></span></span>";?>
-<?print_r(strlen($sample).'<br />');?>
-<?=$sample?>

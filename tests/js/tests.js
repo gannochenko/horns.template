@@ -255,7 +255,7 @@ window.Tests = {
 				},
 				template: "<h3>Jumping around:</h3> {{#jumps}} {{> jumping}} <br /> {{/jumps}}",
 				name: 'jumpingPairs',
-				result: ''
+				result: '<h3>Jumping around:</h3>  The quick &laquo;brown fox&raquo; jumps over the lazy &laquo;dog&raquo; <br />  The quick &laquo;crazy elk&raquo; jumps over the lazy &laquo;brutal crocodile&raquo; <br />  The quick &laquo;smelly squirrel&raquo; jumps over the lazy &laquo;gorgeous giraffe&raquo; <br /> '
 			}
 		];
 	}

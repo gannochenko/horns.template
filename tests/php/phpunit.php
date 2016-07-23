@@ -18,8 +18,8 @@ class MainTest extends PHPUnit_Framework_TestCase
 
 		foreach($tests as $test)
 		{
-			$parser = Horns::compile($test['template'], $test['name']);
-			$this->assertSameNoWhitespace(trim($test['result']), trim($parser->get($test['data'])), 'Test failed for '.$test['name']);
+			Horns::register($test['name'], $test['template']);
+			$this->assertSameNoWhitespace(trim($test['result']), trim(Horns::render($test['name'], $test['data'])), 'Test failed for '.$test['name']);
 		}
 	}
 
