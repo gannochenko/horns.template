@@ -1,4 +1,4 @@
-# Horns Template v1.0.0b
+# Horns Template
 
 Horns Template is the [Handlebars](http://handlebarsjs.com/)-compatible template engine for LAMP projects.
 The main goal is to implement exact the same functionality on both server (`PHP`) and client (`JavaScript`) sides.
@@ -143,9 +143,9 @@ Nested template:
 * Add some more comments using `JavaScript`
 ~~~~
 document.getElementById('product-comments').appendChild(Horns.render('comment', {
-        text: 'You try it first!',
-        'author' => 'Mr White',
-        'date' => 1477686935,
+    text: 'You try it first!',
+    'author' => 'Mr White',
+    'date' => 1477686935,
 }, true));
 ~~~~
 
