@@ -55,12 +55,12 @@ Nested template:
 * Register `PHP` helper implementation
 ~~~~
 <?
-    Horns::registerGlobalHelper('convertTimeStamp', function convertTimeStamp($stamp)
+    Horns::registerGlobalHelpers(['convertTimeStamp' => function convertTimeStamp($stamp)
     {
         $date = new DateTime();
         $date->setTimestamp($stamp);
         return $date->format('d.m.Y H:i');
-    });
+    }]);
 ?>
 ~~~~
 
@@ -94,21 +94,21 @@ Nested template:
         </div>
     </div>
 <?Horns::templateEnd([
-        'src' => 'tea.jpg',
-        'name' => 'Tea "Crazy Strawberry"',
-        'details' => 'Fine tea, tasty and sweet',
-        'comments' => [
-            [
-                'text' => 'Taste it, just taste it!',
-                'author' => 'Mr Smith',
-                'date' => 1477685989,
-            ],
-            [
-                'text' => 'No way',
-                'author' => 'Mr Brown',
-                'date' => 1477686987,
-            ],
-        ]
+    'src' => 'tea.jpg',
+    'name' => 'Tea "Crazy Strawberry"',
+    'details' => 'Fine tea, tasty and sweet',
+    'comments' => [
+        [
+            'text' => 'Taste it, just taste it!',
+            'author' => 'Mr Smith',
+            'date' => 1477685989,
+        ],
+        [
+            'text' => 'No way',
+            'author' => 'Mr Brown',
+            'date' => 1477686987,
+        ],
+    ]
 ]);?>
 ~~~~
 
