@@ -3,6 +3,9 @@
 Horns Template is the [Handlebars](http://handlebarsjs.com/)-compatible template engine for LAMP projects.
 The main goal is to implement exact the same functionality on both server (`PHP`) and client (`JavaScript`) sides.
 
+-----------------------------------------------
+[![MIT License][license-image]][license-url]
+
 ## Supported operators
 
 Auto-escaping in placeholders:
